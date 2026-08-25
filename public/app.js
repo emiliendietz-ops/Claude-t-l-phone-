@@ -59,15 +59,26 @@ async function loadEtats() {
 
 async function loadBaesList() {
   state.baesList = await api('/api/baes');
+  updateBatimentFilterOptions();
   renderList();
+}
+
+function updateBatimentFilterOptions() {
+  const select = el('filter-batiment');
+  const previous = select.value;
+  const batiments = [...new Set(state.baesList.map((b) => b.batiment || 'Sans batiment'))].sort((a, b) => a.localeCompare(b));
+  fillSelect(select, batiments, 'Tous les batiments');
+  if (batiments.includes(previous)) select.value = previous;
 }
 
 function renderList() {
   const search = el('search').value.trim().toLowerCase();
   const etatFilter = el('filter-etat').value;
+  const batimentFilter = el('filter-batiment').value;
 
   const filtered = state.baesList.filter((b) => {
     if (etatFilter && b.etat !== etatFilter) return false;
+    if (batimentFilter && (b.batiment || 'Sans batiment') !== batimentFilter) return false;
     if (!search) return true;
     const haystack = [b.batiment, b.etage, b.salle, b.reference].filter(Boolean).join(' ').toLowerCase();
     return haystack.includes(search);
@@ -271,6 +282,7 @@ el('form-remplacement').addEventListener('submit', async (e) => {
 
 el('search').addEventListener('input', renderList);
 el('filter-etat').addEventListener('change', renderList);
+el('filter-batiment').addEventListener('change', renderList);
 
 (async function init() {
   await loadEtats();
