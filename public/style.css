@@ -84,23 +84,67 @@ input[type="text"], input[type="date"], select, textarea {
 }
 
 .baes-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.baes-card {
+.batiment-group { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.batiment-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.batiment-count {
+  background: var(--color-border);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.baes-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  padding: 0.9rem 1rem;
-  cursor: pointer;
-  transition: box-shadow 0.15s;
+  overflow: hidden;
 }
-.baes-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
-.baes-card h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
-.baes-card .loc { color: var(--color-muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+.baes-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.baes-row:last-child { border-bottom: none; }
+.baes-row:hover { background: var(--color-bg); }
+
+.baes-row-main { display: flex; flex-direction: column; gap: 0.1rem; }
+.baes-row-ref { font-weight: 600; }
+.baes-row-loc { color: var(--color-muted); font-size: 0.85rem; }
+
+.baes-row-side {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.baes-row-date { color: var(--color-muted); font-size: 0.8rem; white-space: nowrap; }
 
 .badge {
   display: inline-block;

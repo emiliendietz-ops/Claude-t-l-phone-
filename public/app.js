@@ -81,18 +81,42 @@ function renderList() {
     return;
   }
 
+  const groups = new Map();
   filtered.forEach((b) => {
-    const card = document.createElement('div');
-    card.className = 'baes-card';
-    card.addEventListener('click', () => openDetail(b.id));
-    const loc = [b.batiment, b.etage && `etage ${b.etage}`, b.salle].filter(Boolean).join(' - ');
-    card.innerHTML = `
-      <h3>${escapeHtml(b.reference || 'BAES #' + b.id)}</h3>
-      <div class="loc">${escapeHtml(loc)}</div>
-      <span class="badge ${badgeClass(b.etat)}">${escapeHtml(b.etat)}</span>
-      <div class="card-footer">Dernier test : ${fmtDate(b.date_dernier_test)}</div>
-    `;
-    container.appendChild(card);
+    const key = b.batiment || 'Sans batiment';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(b);
+  });
+
+  [...groups.keys()].sort((a, b) => a.localeCompare(b)).forEach((batiment) => {
+    const section = document.createElement('section');
+    section.className = 'batiment-group';
+
+    const items = groups.get(batiment);
+    section.innerHTML = `<h2 class="batiment-title">${escapeHtml(batiment)} <span class="batiment-count">${items.length}</span></h2>`;
+
+    const ul = document.createElement('ul');
+    ul.className = 'baes-rows';
+    items.forEach((b) => {
+      const li = document.createElement('li');
+      li.className = 'baes-row';
+      li.addEventListener('click', () => openDetail(b.id));
+      const loc = [b.etage && `etage ${b.etage}`, b.salle].filter(Boolean).join(' - ');
+      li.innerHTML = `
+        <div class="baes-row-main">
+          <span class="baes-row-ref">${escapeHtml(b.reference || 'BAES #' + b.id)}</span>
+          <span class="baes-row-loc">${escapeHtml(loc)}</span>
+        </div>
+        <div class="baes-row-side">
+          <span class="badge ${badgeClass(b.etat)}">${escapeHtml(b.etat)}</span>
+          <span class="baes-row-date">Dernier test : ${fmtDate(b.date_dernier_test)}</span>
+        </div>
+      `;
+      ul.appendChild(li);
+    });
+
+    section.appendChild(ul);
+    container.appendChild(section);
   });
 }
 
