@@ -181,11 +181,10 @@ input[type="text"], input[type="date"], select, textarea {
 
 .inline-form {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.4rem;
   margin-bottom: 0.75rem;
 }
-.inline-form input, .inline-form select { flex: 1; min-width: 110px; }
 
 .history-list {
   list-style: none;
