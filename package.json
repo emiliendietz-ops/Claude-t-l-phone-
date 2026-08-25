@@ -1,0 +1,13 @@
+{
+  "name": "suivi-baes",
+  "version": "1.0.0",
+  "description": "Application de suivi des BAES (Blocs Autonomes d'Eclairage de Securite) pour etablissement scolaire",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.21.0"
+  }
+}
