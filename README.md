@@ -17,14 +17,7 @@ via un navigateur. Les donnees sont stockees dans un fichier SQLite local
 ## Installation (a faire une seule fois)
 
 Pre-requis : [Node.js](https://nodejs.org/) installe sur l'ordinateur qui
-servira de serveur (ici le serveur `horus-ng`).
-
-Copier le dossier du projet sur le **disque local** du serveur (par exemple
-`C:\Applications\suivi-cite-scolaire`), pas sur un lecteur reseau partage
-(`P:\...`) : l'application et sa base de donnees doivent rester sur la
-machine qui l'execute.
-
-Puis, dans une invite de commandes ouverte dans ce dossier :
+servira de serveur.
 
 ```bash
 npm install
@@ -35,9 +28,6 @@ npm install
 ```bash
 npm start
 ```
-
-Sous Windows, un double-clic sur `demarrer.bat` (a la racine du projet)
-fait la meme chose sans avoir a ouvrir une invite de commandes.
 
 La console affiche quelque chose comme :
 
@@ -60,21 +50,7 @@ Il faut que le pare-feu de l'ordinateur serveur autorise les connexions
 entrantes sur le port 3000 pour que les autres postes puissent se connecter.
 
 Le serveur doit rester lance (fenetre ouverte) pour que les autres postes
-puissent y acceder. Pour l'arreter : `Ctrl+C` dans le terminal (ou fermer la
-fenetre).
-
-### Demarrage automatique au demarrage de horus-ng (optionnel)
-
-Pour eviter d'avoir a relancer `demarrer.bat` a la main apres un redemarrage
-du serveur :
-
-1. Ouvrir le Planificateur de taches Windows (`taskschd.msc`).
-2. Creer une tache declenchee "Au demarrage de l'ordinateur" (ou "A l'ouverture
-   de session" si un compte se connecte automatiquement).
-3. Action : demarrer un programme -> selectionner `demarrer.bat` dans le
-   dossier du projet.
-4. Cocher "Executer avec les autorisations maximales" et, si besoin,
-   "Executer que l'utilisateur soit connecte ou non".
+puissent y acceder. Pour l'arreter : `Ctrl+C` dans le terminal.
 
 ## Suivi des BAES
 
