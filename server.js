@@ -39,13 +39,39 @@ db.exec(`
     commentaire TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS entreprises (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom TEXT NOT NULL,
+    equipement TEXT,
+    telephone TEXT,
+    email TEXT,
+    statut TEXT NOT NULL DEFAULT 'A contacter',
+    date_dernier_contact TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS rdv (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entreprise_id INTEGER NOT NULL REFERENCES entreprises(id) ON DELETE CASCADE,
+    date_rdv TEXT NOT NULL,
+    heure_rdv TEXT,
+    objet TEXT,
+    statut TEXT NOT NULL DEFAULT 'Planifie',
+    commentaire TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 const ETATS_VALIDES = ['Fonctionnel', 'En panne', 'Batterie HS', 'A verifier'];
+const STATUTS_ENTREPRISE = ['A contacter', 'Contactee', 'RDV planifie', 'Intervention faite'];
+const STATUTS_RDV = ['Planifie', 'Effectue', 'Annule'];
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/entretien', express.static(path.join(__dirname, 'public-entretien')));
 
 function getBaesById(id) {
   return db.prepare('SELECT * FROM baes WHERE id = ?').get(id);
@@ -151,8 +177,94 @@ app.delete('/api/remplacements/:remplacementId', (req, res) => {
 
 app.get('/api/etats', (req, res) => res.json(ETATS_VALIDES));
 
+// --- Entreprises (suivi entretien annuel) ---
+
+function getEntrepriseById(id) {
+  return db.prepare('SELECT * FROM entreprises WHERE id = ?').get(id);
+}
+
+app.get('/api/entreprises', (req, res) => {
+  const rows = db.prepare('SELECT * FROM entreprises ORDER BY statut, nom').all();
+  res.json(rows);
+});
+
+app.get('/api/entreprises/:id', (req, res) => {
+  const entreprise = getEntrepriseById(req.params.id);
+  if (!entreprise) return res.status(404).json({ error: 'Entreprise introuvable' });
+  const rdvs = db.prepare('SELECT * FROM rdv WHERE entreprise_id = ? ORDER BY date_rdv DESC, id DESC').all(req.params.id);
+  res.json({ ...entreprise, rdv: rdvs });
+});
+
+app.post('/api/entreprises', (req, res) => {
+  const { nom, equipement, telephone, email, statut, date_dernier_contact, notes } = req.body || {};
+  if (!nom || !String(nom).trim()) {
+    return res.status(400).json({ error: 'Le nom de l\'entreprise est obligatoire' });
+  }
+  const statutFinal = STATUTS_ENTREPRISE.includes(statut) ? statut : 'A contacter';
+  const stmt = db.prepare(`
+    INSERT INTO entreprises (nom, equipement, telephone, email, statut, date_dernier_contact, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  const info = stmt.run(nom.trim(), equipement || null, telephone || null, email || null, statutFinal, date_dernier_contact || null, notes || null);
+  res.status(201).json(getEntrepriseById(info.lastInsertRowid));
+});
+
+app.put('/api/entreprises/:id', (req, res) => {
+  const existing = getEntrepriseById(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Entreprise introuvable' });
+  const { nom, equipement, telephone, email, statut, date_dernier_contact, notes } = req.body || {};
+  if (!nom || !String(nom).trim()) {
+    return res.status(400).json({ error: 'Le nom de l\'entreprise est obligatoire' });
+  }
+  const statutFinal = STATUTS_ENTREPRISE.includes(statut) ? statut : existing.statut;
+  db.prepare(`
+    UPDATE entreprises SET nom = ?, equipement = ?, telephone = ?, email = ?, statut = ?, date_dernier_contact = ?, notes = ?
+    WHERE id = ?
+  `).run(nom.trim(), equipement || null, telephone || null, email || null, statutFinal, date_dernier_contact || null, notes || null, req.params.id);
+  res.json(getEntrepriseById(req.params.id));
+});
+
+app.delete('/api/entreprises/:id', (req, res) => {
+  const existing = getEntrepriseById(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Entreprise introuvable' });
+  db.prepare('DELETE FROM entreprises WHERE id = ?').run(req.params.id);
+  res.status(204).end();
+});
+
+// --- RDV ---
+
+app.post('/api/entreprises/:id/rdv', (req, res) => {
+  const entreprise = getEntrepriseById(req.params.id);
+  if (!entreprise) return res.status(404).json({ error: 'Entreprise introuvable' });
+  const { date_rdv, heure_rdv, objet, statut, commentaire } = req.body || {};
+  if (!date_rdv) {
+    return res.status(400).json({ error: 'date_rdv est obligatoire' });
+  }
+  const statutFinal = STATUTS_RDV.includes(statut) ? statut : 'Planifie';
+  db.prepare('INSERT INTO rdv (entreprise_id, date_rdv, heure_rdv, objet, statut, commentaire) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(req.params.id, date_rdv, heure_rdv || null, objet || null, statutFinal, commentaire || null);
+
+  // Un RDV planifie fait passer l'entreprise au statut "RDV planifie",
+  // sauf si le RDV est deja marque comme effectue.
+  const nouveauStatutEntreprise = statutFinal === 'Effectue' ? 'Intervention faite' : 'RDV planifie';
+  db.prepare('UPDATE entreprises SET statut = ?, date_dernier_contact = ? WHERE id = ?')
+    .run(nouveauStatutEntreprise, date_rdv, req.params.id);
+
+  res.status(201).json(getEntrepriseById(req.params.id));
+});
+
+app.delete('/api/rdv/:rdvId', (req, res) => {
+  const info = db.prepare('DELETE FROM rdv WHERE id = ?').run(req.params.rdvId);
+  if (info.changes === 0) return res.status(404).json({ error: 'RDV introuvable' });
+  res.status(204).end();
+});
+
+app.get('/api/statuts-entreprise', (req, res) => res.json(STATUTS_ENTREPRISE));
+app.get('/api/statuts-rdv', (req, res) => res.json(STATUTS_RDV));
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Suivi BAES demarre sur http://0.0.0.0:${PORT}`);
+  console.log(`Suivi entretien annuel disponible sur http://0.0.0.0:${PORT}/entretien`);
   console.log(`Accessible depuis ce PC via http://localhost:${PORT}`);
   console.log(`Accessible depuis les autres postes du reseau local via l'IP de cette machine, ex: http://192.168.x.x:${PORT}`);
 });

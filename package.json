@@ -1,7 +1,7 @@
 {
-  "name": "suivi-baes",
+  "name": "suivi-cite-scolaire",
   "version": "1.0.0",
-  "description": "Application de suivi des BAES (Blocs Autonomes d'Eclairage de Securite) pour etablissement scolaire",
+  "description": "Applications de suivi pour etablissement scolaire : BAES et entretien annuel des equipements",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

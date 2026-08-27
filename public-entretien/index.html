@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entretien annuel - Entreprises &amp; RDV</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+  <h1>Entretien annuel des equipements</h1>
+  <button id="btn-new-entreprise" class="btn btn-primary">+ Ajouter une entreprise</button>
+</header>
+
+<main>
+  <section id="filters" class="filters">
+    <input type="text" id="search" placeholder="Rechercher (nom, equipement)...">
+    <select id="filter-statut">
+      <option value="">Tous les statuts</option>
+    </select>
+  </section>
+
+  <section id="entreprises-list" class="entreprises-list"></section>
+</main>
+
+<!-- Modale : creer / editer une entreprise -->
+<div id="modal-entreprise" class="modal hidden">
+  <div class="modal-content">
+    <h2 id="modal-entreprise-title">Nouvelle entreprise</h2>
+    <form id="form-entreprise">
+      <input type="hidden" id="entreprise-id">
+      <label>Nom de l'entreprise *<input type="text" id="entreprise-nom" required></label>
+      <label>Equipement concerne<input type="text" id="entreprise-equipement" placeholder="ex: chaudieres, ascenseurs, extincteurs..."></label>
+      <label>Telephone<input type="tel" id="entreprise-telephone"></label>
+      <label>Email<input type="email" id="entreprise-email"></label>
+      <label>Statut
+        <select id="entreprise-statut"></select>
+      </label>
+      <label>Date du dernier contact<input type="date" id="entreprise-date-contact"></label>
+      <label>Notes<textarea id="entreprise-notes" rows="3"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close-modal="modal-entreprise">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modale : detail d'une entreprise -->
+<div id="modal-detail" class="modal hidden">
+  <div class="modal-content modal-content-lg">
+    <div class="detail-header">
+      <h2 id="detail-title">Entreprise</h2>
+      <div class="detail-header-actions">
+        <button id="btn-edit-entreprise" class="btn">Modifier</button>
+        <button id="btn-delete-entreprise" class="btn btn-danger">Supprimer</button>
+      </div>
+    </div>
+    <p id="detail-meta" class="detail-meta"></p>
+
+    <div class="detail-col">
+      <h3>Rendez-vous</h3>
+      <form id="form-rdv" class="inline-form">
+        <input type="date" id="rdv-date" required>
+        <input type="time" id="rdv-heure">
+        <input type="text" id="rdv-objet" placeholder="Objet (ex: entretien annuel chaudiere)">
+        <select id="rdv-statut"></select>
+        <input type="text" id="rdv-commentaire" placeholder="Commentaire (optionnel)">
+        <button type="submit" class="btn btn-primary">Ajouter</button>
+      </form>
+      <ul id="rdv-list" class="history-list"></ul>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn" data-close-modal="modal-detail">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
