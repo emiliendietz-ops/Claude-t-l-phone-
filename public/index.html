@@ -3,94 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Suivi des BAES</title>
-<link rel="stylesheet" href="style.css">
+<title>Hub d'applications</title>
+<link rel="stylesheet" href="hub.css">
 </head>
 <body>
-<header class="app-header">
-  <h1>Suivi des BAES</h1>
-  <button id="btn-new-baes" class="btn btn-primary">+ Ajouter un BAES</button>
+<header class="hub-header">
+  <h1>Mes applications</h1>
 </header>
 
-<main>
-  <section id="filters" class="filters">
-    <input type="text" id="search" placeholder="Rechercher (batiment, etage, salle, reference)...">
-    <select id="filter-batiment">
-      <option value="">Tous les batiments</option>
-    </select>
-    <select id="filter-etat">
-      <option value="">Tous les etats</option>
-    </select>
-  </section>
-
-  <section id="baes-list" class="baes-list"></section>
+<main class="hub-main">
+  <div id="apps-grid" class="apps-grid"></div>
 </main>
 
-<!-- Modale : creer / editer un BAES -->
-<div id="modal-baes" class="modal hidden">
-  <div class="modal-content">
-    <h2 id="modal-baes-title">Nouveau BAES</h2>
-    <form id="form-baes">
-      <input type="hidden" id="baes-id">
-      <label>Batiment *<input type="text" id="baes-batiment" required></label>
-      <label>Etage<input type="text" id="baes-etage"></label>
-      <label>Salle / emplacement<input type="text" id="baes-salle"></label>
-      <label>Reference<input type="text" id="baes-reference"></label>
-      <label>Etat
-        <select id="baes-etat"></select>
-      </label>
-      <label>Date du dernier test<input type="date" id="baes-date-test"></label>
-      <label>Notes<textarea id="baes-notes" rows="3"></textarea></label>
-      <div class="modal-actions">
-        <button type="button" class="btn" data-close-modal="modal-baes">Annuler</button>
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Modale : detail d'un BAES -->
-<div id="modal-detail" class="modal hidden">
-  <div class="modal-content modal-content-lg">
-    <div class="detail-header">
-      <h2 id="detail-title">BAES</h2>
-      <div class="detail-header-actions">
-        <button id="btn-edit-baes" class="btn">Modifier</button>
-        <button id="btn-delete-baes" class="btn btn-danger">Supprimer</button>
-      </div>
-    </div>
-    <p id="detail-meta" class="detail-meta"></p>
-
-    <div class="detail-grid">
-      <div class="detail-col">
-        <h3>Historique des tests</h3>
-        <form id="form-test" class="inline-form">
-          <input type="date" id="test-date" required>
-          <select id="test-resultat"></select>
-          <input type="text" id="test-commentaire" placeholder="Commentaire (optionnel)">
-          <button type="submit" class="btn btn-primary">Ajouter</button>
-        </form>
-        <ul id="tests-list" class="history-list"></ul>
-      </div>
-
-      <div class="detail-col">
-        <h3>Historique des remplacements</h3>
-        <form id="form-remplacement" class="inline-form">
-          <input type="date" id="remplacement-date" required>
-          <input type="text" id="remplacement-piece" placeholder="Piece remplacee (ex: batterie, bloc complet)" required>
-          <input type="text" id="remplacement-commentaire" placeholder="Commentaire (optionnel)">
-          <button type="submit" class="btn btn-primary">Ajouter</button>
-        </form>
-        <ul id="remplacements-list" class="history-list"></ul>
-      </div>
-    </div>
-
-    <div class="modal-actions">
-      <button type="button" class="btn" data-close-modal="modal-detail">Fermer</button>
-    </div>
-  </div>
-</div>
-
-<script src="app.js"></script>
+<script src="hub.js"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 {
-  "name": "suivi-baes",
+  "name": "hub-applications",
   "version": "1.0.0",
-  "description": "Application de suivi des BAES (Blocs Autonomes d'Eclairage de Securite) pour etablissement scolaire",
+  "description": "Hub d'applications : page d'accueil listant les applications, dont Suivi des BAES",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
