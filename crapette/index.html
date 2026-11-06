@@ -39,14 +39,15 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 .pile{display:flex; flex-direction:column; align-items:center; gap:3px}
 .pile .lbl{font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft)}
 
-.board{display:flex; gap:calc(var(--gap)*2); justify-content:center; align-items:flex-start}
+.board{display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); column-gap:var(--gap); align-items:center}
+.board .centre{justify-self:end}
 .row{display:grid; grid-template-columns:1fr var(--cw) 1fr; gap:6px; align-items:center}
 .cols{display:flex; gap:var(--gap)}
 .tab{position:relative; width:var(--cw); height:var(--colh); border-radius:6px; flex:none}
 .tab::before{content:""; position:absolute; left:0; width:var(--cw); height:var(--ch); border:1px dashed var(--felt-line); border-radius:6px; box-sizing:border-box}
 .tab.U::before{bottom:0} .tab.D::before{top:0}
 .tab .card{position:absolute; left:0}
-.centre{display:flex; flex-direction:column; gap:var(--gap); padding:6px; margin:-6px; border-radius:12px; background:rgba(0,0,0,.16)}
+.centre{display:flex; flex-direction:column; gap:var(--gap); padding:6px; margin:-6px 0; border-radius:12px; background:rgba(0,0,0,.16)}
 
 .slot{position:relative; width:var(--cw); height:var(--ch); border-radius:6px; border:1px dashed var(--felt-line); box-sizing:border-box; cursor:pointer; flex:none}
 .slot.fond.redmark::after{color:#6b4a3e}
@@ -329,8 +330,8 @@ function tabEl(i,side,areaH,ch){
 
 function render(){
   const W=Math.min(document.querySelector(".wrap").clientWidth-24, 596);
-  const cw=Math.max(38,Math.min(72,Math.floor(W/7.3))), ch=Math.round(cw*1.4), gap=Math.round(cw*0.16);
-  const colH=5*ch+4*gap;
+  const cw=Math.max(36,Math.min(72,Math.floor(W/8.3))), ch=Math.round(cw*1.4), gap=Math.round(cw*0.16);
+  const colH=3*ch+2*gap; // the 5 columns sit at mid-height of the side piles
   const rs=document.documentElement.style;
   rs.setProperty("--cw",cw+"px"); rs.setProperty("--gap",gap+"px"); rs.setProperty("--colh",colH+"px");
   const vs=viewSeat();
@@ -348,7 +349,7 @@ function render(){
   }
   {const pile=state.atout[0]; const el=slot("a0","fond",top(pile),true,null,"").firstChild; el.dataset.mark="★";
    el.setAttribute("aria-label","Atouts"+(pile.length?" : "+nameOf(top(pile)):" vide")); mid.appendChild(el)}
-  board.append(cols,mid);
+  board.append(document.createElement("div"),cols,mid); // empty left cell keeps the 5 columns in the middle of the screen
   // highlights
   if(sel){
     document.querySelectorAll('[data-key="'+sel+'"]').forEach(e=>{const c=e.classList.contains("tab")?e.lastElementChild:e.querySelector(".card"); if(c) c.classList.add("sel")});
