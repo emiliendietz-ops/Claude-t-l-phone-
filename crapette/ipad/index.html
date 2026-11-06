@@ -125,6 +125,10 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
       <button type="button" data-mode="online">Deux appareils</button>
     </div>
     <p class="note" id="modeNote"></p>
+    <div class="line" id="codeLine" hidden>
+      <label for="gameCode">Code de la partie (le même sur les deux iPad)<input id="gameCode" maxlength="12" autocapitalize="characters" autocomplete="off"></label>
+      <button class="btn" id="btnJoin" type="button">Rejoindre</button>
+    </div>
     <div class="line" id="seatLine">
       <span class="note">Sur cet appareil, je joue :</span>
       <div class="seg" id="seatSeg" style="flex:1">
@@ -502,13 +506,16 @@ function syncSetup(){
   document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
   document.querySelectorAll("#seatSeg button").forEach(b=>b.classList.toggle("on",+b.dataset.seat===seat));
   $("seatLine").hidden = mode!=="online";
+  $("codeLine").hidden = !(mode==="online" && useServer);
+  if(document.activeElement!==$("gameCode")) $("gameCode").value=serverCode;
   $("seat0").textContent=state.names[0]; $("seat1").textContent=state.names[1];
   if(document.activeElement!==$("name0")) $("name0").value=state.names[0];
   if(document.activeElement!==$("name1")) $("name1").value=state.names[1];
   $("modeNote").textContent = mode==="local"
     ? "Vous jouez chacun votre tour sur le même téléphone ou la même tablette, posée entre vous."
+    : useServer ? "Chacun ouvre le jeu sur son iPad, met le même code de partie, puis choisit sa place. Les coups apparaissent chez l'autre en une seconde."
     : (db ? "Chacun ouvre cette page sur son appareil et choisit sa place. Les coups apparaissent chez l'autre automatiquement."
-          : "Le jeu en ligne n'est pas disponible ici (il faut être connecté à claude.ai). Utilisez « Un seul appareil ».");
+          : "Le jeu en ligne n'est pas disponible ici. Utilisez « Un seul appareil ».");
 }
 $("btnSetup").onclick=()=>{$("setup").hidden=!$("setup").hidden; $("rulesPanel").hidden=true; syncSetup()};
 $("btnRules").onclick=()=>{$("rulesPanel").hidden=!$("rulesPanel").hidden; $("setup").hidden=true};
@@ -533,11 +540,60 @@ function setMode(m){
   syncSetup(); render();
 }
 
-// ---------- online (shared db) ----------
+// ---------- online on the player's own web server (api.php next to this page) ----------
+const useServer = !(window.claude&&window.claude.use) && /^https?:$/.test(location.protocol);
+function randomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let c="";for(let i=0;i<4;i++)c+=a[Math.floor(Math.random()*a.length)];return c}
+let serverCode=ls.get(".code")||randomCode(); ls.set(".code",serverCode);
+let pollTimer=null;
+function applyRemote(d,force){
+  if(!d||d.v!==4) return;
+  if(onlineState&&!force&&d.seq<=onlineState.seq) return;
+  onlineState=d;
+  if(mode==="online"){ state=onlineState; if(sel&&!canAct()) sel=null; render(); if(!$("setup").hidden) syncSetup() }
+}
+const api=()=>"api.php?partie="+encodeURIComponent(serverCode);
+async function poll(){
+  if(writing||document.hidden) return;
+  try{
+    const r=await fetch(api(),{cache:"no-store"});
+    if(r.status===404){ // nobody has started this game yet: this device creates it
+      const ns=newGame(localState.names); dbReady=true; onlineMsg=""; await gameRef.set(ns); applyRemote(ns,true); return;
+    }
+    const d=await r.json(); if(!dbReady){dbReady=true; onlineMsg=""}
+    if(d.v!==4){ const ns=newGame(localState.names); ns.seq=(d.seq||0)+1; await gameRef.set(ns); return }
+    applyRemote(d,false);
+  }catch(e){ onlineMsg = dbReady ? "" : "Le jeu à deux iPad n'est pas disponible ici (le serveur ne répond pas)."; if(!dbReady) render() }
+}
+function startServer(){
+  gameRef={ set: async ns=>{
+    writing=true;
+    try{
+      const r=await fetch(api(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(ns)});
+      if(r.status===409) applyRemote(await r.json(),true); // the other iPad played first: take its game
+      else if(!r.ok) setStatus("Le coup n'a pas pu être enregistré sur le serveur. Vérifiez la connexion.","warn");
+    }catch(e){ setStatus("Pas de connexion : le coup n'a pas été envoyé.","warn") }
+    finally{ writing=false }
+  }};
+  onlineMsg="Connexion à la partie "+serverCode+"…"; render();
+  poll(); pollTimer=setInterval(poll,1200);
+}
+function joinCode(){
+  const c=$("gameCode").value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12);
+  if(!c||c===serverCode) return;
+  serverCode=c; ls.set(".code",c); onlineState=null; dbReady=false; sel=null;
+  if(mode==="online"){ state=localState; render(); poll() }
+  syncSetup();
+}
+$("btnJoin").onclick=joinCode;
+$("gameCode").addEventListener("change",joinCode);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&gameRef&&useServer) poll() });
+
+// ---------- online (shared db on claude.ai) ----------
 let connecting=false;
 async function connect(){
   if(gameRef||connecting) return; connecting=true;
   try{
+    if(useServer){ startServer(); return }
     if(!window.claude||!window.claude.use){ onlineMsg="Le jeu en ligne n'est pas disponible ici."; render(); return }
     db=await window.claude.use("db");
     if(!db){ onlineMsg="Le jeu en ligne n'est pas disponible ici : connectez-vous à claude.ai, ou jouez sur un seul appareil."; render(); syncSetup(); return }

@@ -29,4 +29,9 @@ tail = """
 </html>
 """
 (here / "ipad" / "index.html").write_text(head + body + tail, encoding="utf-8")
-print("crapette/ipad/index.html écrit")
+import shutil, zipfile
+shutil.copy(here / "api.php", here / "ipad" / "api.php")
+files = ["index.html", "api.php", "manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png"]
+with zipfile.ZipFile(here / "crapette-o2switch.zip", "w", zipfile.ZIP_DEFLATED) as z:
+    for f in files: z.write(here / "ipad" / f, f)
+print("crapette/ipad/ et crapette-o2switch.zip écrits")
