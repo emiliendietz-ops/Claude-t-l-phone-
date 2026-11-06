@@ -171,10 +171,10 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
     <ul class="rules">
       <li>Chacun a son <b>talon</b> et sa <b>défausse</b>. But : être le premier à vider les deux.</li>
       <li>On joue avec <b>un seul jeu de tarot</b> (78 cartes). Au début, une carte va dans chacune des 5 colonnes du milieu, et le reste est partagé entre les deux talons. Chaque couleur va de l'As au Roi en passant par le Valet, le Cavalier et la Dame.</li>
-      <li><b>Sur le côté, 5 piles</b> : une par couleur (♠ ♥ ♦ ♣), où l'on monte de l'As au Roi (… 10, V, C, D, R), et une pour les <b>atouts</b> (★), qui commence par l'Excuse puis monte de 1 à 21.</li>
-      <li>Les <b>atouts</b> peuvent aussi aller dans les colonnes du milieu : sur un atout, on pose l'atout juste en dessous (le 7 sur le 8, l'Excuse sur le 1). On ne mélange pas atouts et cartes de couleur dans une suite.</li>
+      <li><b>Sur le côté, 5 piles</b> : une par couleur (♠ ♥ ♦ ♣), où l'on monte de l'As au Roi (… 10, V, C, D, R), et une pour les <b>atouts</b> (★), qui commence par l'Excuse puis monte de 1 à 21. L'Excuse ne va que là.</li>
+      <li>Les <b>atouts</b> peuvent aussi aller dans les colonnes du milieu : sur un atout, on pose l'atout juste en dessous (le 7 sur le 8). On ne mélange pas atouts et cartes de couleur dans une suite.</li>
       <li><b>5 colonnes au milieu</b>, communes aux deux joueurs : on descend en alternant rouge et noir. On peut déplacer une carte ou toute une suite (touchez la première carte de la suite). Une colonne vide accepte n'importe quelle carte.</li>
-      <li>On peut <b>charger l'adversaire</b> : poser une carte sur sa défausse en descendant et en alternant les couleurs (sur un Roi noir, une Dame rouge ; sur une Dame rouge, un Cavalier noir…). Un atout se charge sur l'atout juste au-dessus (le 7 sur le 8, l'Excuse sur le 1).</li>
+      <li>On peut <b>charger l'adversaire</b> : poser une carte sur sa défausse en descendant et en alternant les couleurs (sur un Roi noir, une Dame rouge ; sur une Dame rouge, un Cavalier noir…). Un atout se charge sur l'atout juste au-dessus (le 7 sur le 8).</li>
       <li><b>Ma défausse</b> : on peut rejouer sa dernière carte (touchez votre défausse), ou sa dernière suite (descendante, couleurs alternées) avec « Voir ma défausse ». Une suite se pose dans une colonne ou sur la défausse de l'adversaire. Les cartes plus anciennes restent bloquées.</li>
       <li>Touchez le talon pour retourner une carte. Si elle ne se joue pas, défaussez-la (bouton « Défausser… », ou touchez-la puis votre défausse) : le tour passe.</li>
       <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les piles du côté (couleurs ou atouts).</li>
@@ -265,6 +265,7 @@ function altFits(t,card){
 function fits(st,card,d,s){
   const O=st.players[1-st.turn];
   if(card===null||card===undefined) return false;
+  if(isTrump(card)&&rank(card)===0&&d!=="a0"&&!(d==="md"&&s==="x")) return false; // the Excuse only goes on the atout pile
   const multi = isRun(s)&&runOf(st,s).length>1;
   if(multi && !(d[0]==="t"||d==="od")) return false; // a run goes to a column or onto the opponent's discard
   if(d[0]==="f"){ const i=+d.slice(1); if(suit(card)!==i) return false; const t=top(st.fond[i]); return t===null? rank(card)===1 : rank(card)===rank(t)+1}
