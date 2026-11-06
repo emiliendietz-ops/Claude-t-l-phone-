@@ -162,7 +162,7 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
       <li>Touchez le talon pour retourner une carte. Si elle ne se joue pas, défaussez-la (bouton « Défausser… », ou touchez-la puis votre défausse) : le tour passe.</li>
       <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les piles de droite (couleurs ou atouts), puis charger la défausse de l'adversaire quand c'est possible.</li>
       <li>Si l'adversaire oublie une obligation, appuyez sur <b>Crapette !</b> pendant son tour : son tour s'arrête et c'est à vous.</li>
-      <li>On peut aussi crier <b>Crapette !</b> au tout début de son propre tour, avant de jouer, pour une faute faite par l'adversaire à son dernier tour : il reprend sur sa défausse la carte ou la suite qu'il aurait dû jouer.</li>
+      <li>Le jeu ne punit jamais tout seul : c'est au joueur qui n'a pas fait la faute de crier. Une fois le tour fini, la faute ne peut plus être reprochée.</li>
       <li>Pour jouer : touchez une carte, puis l'endroit où la poser (en vert). Touchez deux fois une carte pour l'envoyer sur les as ou les atouts.</li>
     </ul>
     <div><button class="btn" id="btnRulesClose" type="button">Fermer</button></div>
@@ -333,17 +333,7 @@ function doPass(st0){const st=clone(st0); st.prevFault=st.fault||null; st.fault=
 function doCall(st0,caller){
   const st=clone(st0);
   if(st.winner!==null) return null;
-  if(st.turn===caller){ // late call, at the start of my turn, about the opponent's last turn
-    if(!st.fresh) return null;
-    st.fresh=false; const f=st.prevFault; st.prevFault=null;
-    if(!f){ st.msg=st.names[caller]+" crie « Crapette ! »… mais "+st.names[1-caller]+" n'avait pas fait de faute."; st.seq++; return st }
-    const F=st.players[f.by], n=f.cards.length; let taken=false;
-    for(const col of st.tab){ const tail=col.slice(-n); if(n&&tail.length===n&&tail.every((c,i)=>c===f.cards[i])){ col.splice(-n); F.def.push(...f.cards); taken=true; break } }
-    st.msg="Crapette ! "+st.names[f.by]+" avait oublié : "+f.msg+". "+
-      (taken ? st.names[f.by]+" reprend "+f.cards.map(nameOf).join(", ")+" sur sa défausse." :
-       f.cards.every(c=>F.def.includes(c)) ? "Ces cartes restent sur sa défausse." : "Ces cartes ont déjà été jouées : pas de pénalité.");
-    st.seq++; return st;
-  }
+  if(st.turn===caller) return null; // only the other player can call, and only during the faulty player's turn
   if(!st.fault){ st.msg=st.names[caller]+" crie « Crapette ! »… mais il n'y a pas de faute."; st.seq++; return st }
   const f=st.fault, P=st.players[st.turn];
   if(st.flipped!==null){P.def.push(st.flipped); st.flipped=null}
@@ -565,8 +555,8 @@ function render(){
   else setStatus(state.msg+(mode==="online"&&seat!==state.turn?" (en attente de "+state.names[state.turn]+")":""));
   const acts=$("actions"); acts.innerHTML="";
   if(state.winner===null){
-    // the opponent can call during my turn; I can also call at the very start of my turn about the last one
-    const callers = mode==="local" ? [1-state.turn].concat(state.fresh?[state.turn]:[]) : (seat!=null&&dbReady&&(seat!==state.turn||state.fresh) ? [seat] : []);
+    // only the player who is not playing can call « Crapette ! », during the other player's turn
+    const callers = mode==="local" ? [1-state.turn] : (seat!=null&&seat!==state.turn&&dbReady ? [seat] : []);
     callers.forEach(c=>{const b=document.createElement("button"); b.className="btn call"; b.type="button"; b.textContent="Crapette ! ("+state.names[c]+")"; b.onclick=()=>commit(doCall(state,c)); acts.appendChild(b)});
     if(canAct()&&state.players[state.turn].def.length){const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Voir ma défausse ("+state.players[state.turn].def.length+")"; b.onclick=openDiscard; acts.appendChild(b)}
     if(canAct()&&state.flipped!==null){const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Défausser "+nameOf(state.flipped)+" et finir le tour"; b.onclick=()=>commit(doMove(state,"x","md")); acts.appendChild(b)}
