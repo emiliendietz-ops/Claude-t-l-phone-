@@ -160,8 +160,9 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
       <li>On peut <b>charger l'adversaire</b> : poser une carte sur sa défausse en descendant et en alternant les couleurs (sur un Roi noir, une Dame rouge ; sur une Dame rouge, un Cavalier noir…). Un atout se charge sur l'atout juste au-dessus (le 7 sur le 8).</li>
       <li><b>Ma défausse</b> : on peut rejouer sa dernière carte (touchez votre défausse), ou sa dernière suite (descendante, couleurs alternées) avec « Voir ma défausse ». Une suite se pose dans une colonne ou sur la défausse de l'adversaire. Les cartes plus anciennes restent bloquées.</li>
       <li>Touchez le talon pour retourner une carte. Si elle ne se joue pas, défaussez-la (bouton « Défausser… », ou touchez-la puis votre défausse) : le tour passe.</li>
-      <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les piles du côté (couleurs ou atouts).</li>
-      <li>Si l'adversaire oublie une obligation, appuyez sur <b>Crapette !</b> : son tour s'arrête et c'est à vous.</li>
+      <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les piles de droite (couleurs ou atouts), puis charger la défausse de l'adversaire quand c'est possible.</li>
+      <li>Si l'adversaire oublie une obligation, appuyez sur <b>Crapette !</b> pendant son tour : son tour s'arrête et c'est à vous.</li>
+      <li>On peut aussi crier <b>Crapette !</b> au tout début de son propre tour, avant de jouer, pour une faute faite par l'adversaire à son dernier tour : il reprend sur sa défausse la carte ou la suite qu'il aurait dû jouer.</li>
       <li>Pour jouer : touchez une carte, puis l'endroit où la poser (en vert). Touchez deux fois une carte pour l'envoyer sur les as ou les atouts.</li>
     </ul>
     <div><button class="btn" id="btnRulesClose" type="button">Fermer</button></div>
@@ -268,20 +269,43 @@ function foundationAvailable(st){return SRCS.some(s=>dests(st,s).some(UP))}
 function crapPlayable(st){return dests(st,"c").length>0}
 function hasWon(st,p){const P=st.players[p];return !P.crap.length&&!P.talon.length&&!P.def.length&&!(st.turn===p&&st.flipped!==null)}
 
-function noteFault(st,msg){ if(!st.fault) st.fault={by:st.turn,msg} }
+// a fault remembers the cards that should have been played, for the « Crapette ! » penalty
+function noteFault(st,msg,cards){ if(!st.fault) st.fault={by:st.turn,msg,cards:cards||[]} }
+// every place cards can be taken from: single cards, plus runs inside columns and in my discard
+function allSources(st){
+  const k=[...SRCS];
+  st.tab.forEach((c,i)=>{for(let j=0;j<c.length-1;j++) k.push("t"+i+"."+j)});
+  const D=st.players[st.turn].def; for(let j=0;j<D.length-1;j++) k.push("d"+j);
+  return k;
+}
+function cardsOf(st,s){ if(isRun(s)) return runOf(st,s)||[]; const c=srcCard(st,s); return c===null?[]:[c] }
+// the biggest group of cards that could make a move matching test(dest), or null
+function missed(st,test){
+  let best=null;
+  for(const s of allSources(st)){ if(srcCard(st,s)===null) continue;
+    if(dests(st,s).some(test)){ const cs=cardsOf(st,s); if(!best||cs.length>best.length) best=cs } }
+  return best;
+}
+// obligations, in order: first anything that can go up on the piles on the right, then loading the opponent's discard
+function checkFault(st0,st,d){
+  if(d&&UP(d)) return;
+  const up=missed(st0,UP); if(up){ noteFault(st,"une carte pouvait monter sur les piles de droite",up); return }
+  if(d==="od") return;
+  const ld=missed(st0,x=>x==="od"); if(ld) noteFault(st,"il pouvait charger la défausse de "+st.names[1-st.turn]+" avec "+ld.map(nameOf).join(", "),ld);
+}
 
 function doMove(st0,s,d){
   if(!fits(st0,srcCard(st0,s),d,s)) return null;
   const st=clone(st0), me=st.turn, P=st.players[me], O=st.players[1-me];
-  if(!UP(d) && foundationAvailable(st0)) noteFault(st,"une carte pouvait monter sur les as ou les atouts");
-  if(s==="x" && crapPlayable(st0)) noteFault(st,"la carte de la crapette devait être jouée avant le talon");
+  checkFault(st0,st,d);
+  st.fresh=false; st.prevFault=null; // my first move closes the late « Crapette ! » on the previous turn
   let card;
   let run=null;
   if(isRun(s)){ run=runOf(st,s); (s[0]==="d"?P.def:st.tab[+baseKey(s).slice(1)]).splice(-run.length) }
   if(s==="c") card=P.crap.pop(); else if(s==="x"){card=st.flipped; st.flipped=null} else if(run) card=run[0]; else card=st.tab[+s.slice(1)].pop();
   const who=st.names[me];
   if(d==="md"){
-    P.def.push(card); st.turn=1-me; st.fault=null;
+    P.def.push(card); st.turn=1-me; st.prevFault=st.fault||null; st.fault=null; st.fresh=true;
     st.msg=who+" défausse "+nameOf(card)+". À "+st.names[st.turn]+" de jouer.";
   } else {
     const cards=run||[card];
@@ -299,16 +323,27 @@ function doFlip(st0){
   if(st0.flipped!==null) return null;
   const st=clone(st0), P=st.players[st.turn];
   if(!P.talon.length){ if(!P.def.length) return null; P.talon=P.def.reverse(); P.def=[]; }
-  if(foundationAvailable(st0)) noteFault(st,"une carte pouvait monter sur les as ou les atouts");
-  else if(crapPlayable(st0)) noteFault(st,"la carte de la crapette devait être jouée avant le talon");
+  checkFault(st0,st,null);
+  st.fresh=false; st.prevFault=null;
   st.flipped=P.talon.pop(); st.msg=st.names[st.turn]+" retourne "+nameOf(st.flipped)+".";
   st.seq++; return st;
 }
 function canPass(st){const P=st.players[st.turn]; return st.flipped===null&&!P.talon.length&&!P.def.length&&!st.winner}
-function doPass(st0){const st=clone(st0); st.fault=null; st.turn=1-st.turn; st.msg="Talon vide : à "+st.names[st.turn]+" de jouer."; st.seq++; return st}
+function doPass(st0){const st=clone(st0); st.prevFault=st.fault||null; st.fault=null; st.fresh=true; st.turn=1-st.turn; st.msg="Talon vide : à "+st.names[st.turn]+" de jouer."; st.seq++; return st}
 function doCall(st0,caller){
   const st=clone(st0);
-  if(st.turn===caller||st.winner!==null) return null;
+  if(st.winner!==null) return null;
+  if(st.turn===caller){ // late call, at the start of my turn, about the opponent's last turn
+    if(!st.fresh) return null;
+    st.fresh=false; const f=st.prevFault; st.prevFault=null;
+    if(!f){ st.msg=st.names[caller]+" crie « Crapette ! »… mais "+st.names[1-caller]+" n'avait pas fait de faute."; st.seq++; return st }
+    const F=st.players[f.by], n=f.cards.length; let taken=false;
+    for(const col of st.tab){ const tail=col.slice(-n); if(n&&tail.length===n&&tail.every((c,i)=>c===f.cards[i])){ col.splice(-n); F.def.push(...f.cards); taken=true; break } }
+    st.msg="Crapette ! "+st.names[f.by]+" avait oublié : "+f.msg+". "+
+      (taken ? st.names[f.by]+" reprend "+f.cards.map(nameOf).join(", ")+" sur sa défausse." :
+       f.cards.every(c=>F.def.includes(c)) ? "Ces cartes restent sur sa défausse." : "Ces cartes ont déjà été jouées : pas de pénalité.");
+    st.seq++; return st;
+  }
   if(!st.fault){ st.msg=st.names[caller]+" crie « Crapette ! »… mais il n'y a pas de faute."; st.seq++; return st }
   const f=st.fault, P=st.players[st.turn];
   if(st.flipped!==null){P.def.push(st.flipped); st.flipped=null}
@@ -530,7 +565,8 @@ function render(){
   else setStatus(state.msg+(mode==="online"&&seat!==state.turn?" (en attente de "+state.names[state.turn]+")":""));
   const acts=$("actions"); acts.innerHTML="";
   if(state.winner===null){
-    const callers = mode==="local" ? [1-state.turn] : (seat!=null&&seat!==state.turn&&dbReady ? [seat] : []);
+    // the opponent can call during my turn; I can also call at the very start of my turn about the last one
+    const callers = mode==="local" ? [1-state.turn].concat(state.fresh?[state.turn]:[]) : (seat!=null&&dbReady&&(seat!==state.turn||state.fresh) ? [seat] : []);
     callers.forEach(c=>{const b=document.createElement("button"); b.className="btn call"; b.type="button"; b.textContent="Crapette ! ("+state.names[c]+")"; b.onclick=()=>commit(doCall(state,c)); acts.appendChild(b)});
     if(canAct()&&state.players[state.turn].def.length){const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Voir ma défausse ("+state.players[state.turn].def.length+")"; b.onclick=openDiscard; acts.appendChild(b)}
     if(canAct()&&state.flipped!==null){const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Défausser "+nameOf(state.flipped)+" et finir le tour"; b.onclick=()=>commit(doMove(state,"x","md")); acts.appendChild(b)}
