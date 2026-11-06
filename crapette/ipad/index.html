@@ -574,7 +574,7 @@ function render(){
   if(state.winner===null){
     // only the player who is not playing can call « Crapette ! », during the other player's turn
     const callers = mode==="local" ? [1-state.turn] : (seat!=null&&seat!==state.turn&&dbReady ? [seat] : []);
-    callers.forEach(c=>{const b=document.createElement("button"); b.className="btn call"; b.type="button"; b.textContent="Crapette ! ("+state.names[c]+")"; b.onclick=()=>commit(doCall(state,c)); acts.appendChild(b)});
+    callers.forEach(c=>{const b=document.createElement("button"); b.className="btn call"; b.type="button"; b.textContent=state.names[c]+" crie Crapette !"; b.onclick=()=>commit(doCall(state,c)); acts.appendChild(b)});
     if(canAct()&&state.players[state.turn].def.length){const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Voir ma défausse ("+state.players[state.turn].def.length+")"; b.onclick=openDiscard; acts.appendChild(b)}
     if(canAct()&&state.flipped!==null){const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Défausser "+nameOf(state.flipped)+" et finir le tour"; b.onclick=()=>commit(doMove(state,"x","md")); acts.appendChild(b)}
     if(canAct()&&canPass(state)){const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Passer mon tour"; b.onclick=()=>commit(doPass(state)); acts.appendChild(b)}
