@@ -334,7 +334,7 @@ function doCall(st0,caller){
   const st=clone(st0);
   if(st.winner!==null) return null;
   if(st.turn===caller) return null; // only the other player can call, and only during the faulty player's turn
-  if(!st.fault){ st.msg=st.names[caller]+" crie « Crapette ! »… mais il n'y a pas de faute."; st.seq++; return st }
+  if(!st.fault) return null; // no fault: the button does nothing, so it never gives a hint
   const f=st.fault, P=st.players[st.turn];
   if(st.flipped!==null){P.def.push(st.flipped); st.flipped=null}
   st.msg="Crapette ! "+st.names[st.turn]+" a oublié : "+f.msg+". À "+st.names[caller]+" de jouer.";
