@@ -110,6 +110,22 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 .note{color:var(--ink-soft); font-size:.78rem; margin:0}
 .actions{display:flex; gap:8px; justify-content:center; flex-wrap:wrap}
 @media (prefers-reduced-motion: no-preference){ .card{transition:transform .12s} .card.sel{transform:translateY(-3px)} }
+/* turn change: a quick banner across the table, and a glow on the player whose turn it is */
+.turnBanner{position:fixed; left:0; right:0; top:42%; z-index:50; pointer-events:none; display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding-block:14px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px));
+  background:linear-gradient(90deg, transparent, rgba(13,34,25,.94) 18%, rgba(13,34,25,.94) 82%, transparent); border-block:2px solid var(--brass); opacity:0}
+.turnBanner .tb1{font-size:.85rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft)}
+.turnBanner .tb2{font-family:var(--f-display); font-size:1.9rem; color:var(--brass); text-align:center}
+.turnBanner.go{animation:tbFade .5s ease both}
+.player.glow{animation:glowFade .5s ease}
+@keyframes tbFade{0%{opacity:0} 15%{opacity:1} 75%{opacity:1} 100%{opacity:0}}
+@keyframes glowFade{0%{box-shadow:0 0 0 1px var(--brass) inset} 40%{box-shadow:0 0 0 3px var(--brass) inset, 0 0 26px rgba(215,181,109,.65)} 100%{box-shadow:0 0 0 1px var(--brass) inset}}
+@media (prefers-reduced-motion: no-preference){
+  .turnBanner.go{animation:tbSlide .5s cubic-bezier(.2,.8,.2,1) both}
+  .turnBanner.go .tb2{animation:tbPop .5s ease both}
+  @keyframes tbSlide{0%{opacity:0; transform:translateX(-40%)} 18%{opacity:1; transform:none} 72%{opacity:1; transform:none} 100%{opacity:0; transform:translateX(40%)}}
+  @keyframes tbPop{0%,15%{transform:scale(.8)} 30%{transform:scale(1.08)} 42%,100%{transform:scale(1)}}
+}
 </style>
 
 <div class="wrap">
@@ -179,6 +195,7 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
   <div class="player" id="top"></div>
   <div class="board" id="board"></div>
   <div class="player" id="bottom"></div>
+  <div class="turnBanner" id="turnBanner" aria-hidden="true"><span class="tb1" id="tb1"></span><span class="tb2" id="tb2"></span></div>
   <div class="status" id="status" aria-live="polite"></div>
   <div class="actions" id="actions"></div>
 </div>
@@ -474,6 +491,20 @@ function tabEl(i,side,areaH,ch){
   return el;
 }
 
+// ---------- turn-change animation ----------
+let lastTurn=null, lastSeqSeen=null;
+function turnAnim(){
+  if(!state||state.winner!==null){ lastTurn=state?state.turn:null; return }
+  const changed = lastTurn!==null && state.turn!==lastTurn;
+  lastTurn=state.turn;
+  if(!changed) return;
+  const prev=1-state.turn, b=$("turnBanner");
+  $("tb1").textContent="Fin du tour de "+state.names[prev];
+  $("tb2").textContent= (mode==="online"&&seat===state.turn) ? "À toi de jouer, "+state.names[state.turn]+" !" : "À "+state.names[state.turn]+" de jouer !";
+  b.classList.remove("go"); void b.offsetWidth; b.classList.add("go");
+  const box=document.querySelector(".player.active"); if(box){ box.classList.remove("glow"); void box.offsetWidth; box.classList.add("glow") }
+}
+
 function render(){
   const W=Math.min(document.querySelector(".wrap").clientWidth-24, 596);
   const cw=Math.max(36,Math.min(72,Math.floor(W/8.3))), ch=Math.round(cw*1.4), gap=Math.round(cw*0.16);
@@ -502,6 +533,7 @@ function render(){
     else document.querySelectorAll('[data-key="'+(sel[0]==="d"?"md":sel)+'"]').forEach(e=>{const c=e.classList.contains("tab")?e.lastElementChild:e.querySelector(".card"); if(c) c.classList.add("sel")});
     dests(state,sel).forEach(d=>document.querySelectorAll('[data-key="'+d+'"]').forEach(e=>e.classList.add("target")));
   }
+  requestAnimationFrame(turnAnim);
   // status + actions
   const st=$("status");
   if(state.winner!==null){ setStatus(state.msg,"win") }
