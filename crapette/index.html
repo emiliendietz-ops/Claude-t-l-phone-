@@ -63,7 +63,9 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 .card::after{content:""}
 .card.red{color:var(--red)} .card.blk{color:var(--black)}
 .card.trump{color:var(--trump); background:var(--card); overflow:hidden; position:relative}
-.card.trump .art{position:absolute; inset:2px; width:calc(100% - 4px); height:calc(100% - 4px); border-radius:4px}
+.card.face{overflow:hidden; position:relative}
+.card.face .tn{color:inherit; box-shadow:0 0 0 1px currentColor}
+.card.face .art,.card.trump .art{position:absolute; inset:2px; width:calc(100% - 4px); height:calc(100% - 4px); border-radius:4px}
 .card .tn{position:absolute; left:2px; top:2px; z-index:2; min-width:1.35em; padding:1px 2px; box-sizing:border-box; text-align:center; background:var(--card); color:var(--trump); border-radius:4px; font-size:calc(var(--cw)*.27); line-height:1.1; box-shadow:0 0 0 1px var(--trump)}
 .card .tn.b{left:auto; top:auto; right:2px; bottom:2px; transform:rotate(180deg)}
 .card.back{background:repeating-linear-gradient(45deg, rgba(255,255,255,.13) 0 3px, transparent 3px 7px), var(--back-a); border:2px solid #fff3}
@@ -275,34 +277,46 @@ function commit(ns){
 // ---------- rendering ----------
 // ---------- manga portraits for the atouts (original characters drawn in SVG) ----------
 const ART={};
-function mangaArt(v){
-  if(ART[v]) return ART[v];
+// mangaArt(v) draws atout v (0 = Excuse); mangaArt(v, fr, fs) draws the face card of rank fr (11 V, 12 C, 13 D, 14 R) in suit fs.
+function mangaArt(v,fr,fs){
+  const key=fr?"f"+fr+"_"+fs:v;
+  if(ART[key]) return ART[key];
   const HAIR=["#2b2b3a","#f2c14e","#e35d6a","#4f7cff","#8e5cd9","#f3eee2","#3fb27f","#ff8a3d","#6b4a3a"];
   const EYE=["#3a7bd5","#2fb36b","#d1495b","#8e5cd9","#e8a33d","#1fa3b5","#c2456f"];
   const BG=["#ffd6e0","#d6ecff","#fff1c2","#dff7e3","#eadcff","#ffe2cc"];
   const CLOTH=["#2f3b6b","#b8322a","#1f6b4f","#5a3a86","#c77d1a","#264653"];
-  const ex=v===0, hair=ex?"#7a2fa0":HAIR[(v*4)%9], eye=ex?"#e8a33d":EYE[(v*5)%7], bg=ex?"#f6e3ff":BG[v%6];
-  const cloth=ex?"#7a2fa0":CLOTH[(v*7)%6], style=v%4, acc=ex?-1:(v*2)%5, expr=ex?3:v%3, skin="#ffe0c7", ink="#2a1f2d";
+  const ex=v===0&&!fr, hair=ex?"#7a2fa0":HAIR[(v*4)%9], eye=ex?"#e8a33d":EYE[(v*5)%7], bg=ex?"#f6e3ff":BG[v%6];
+  let cloth=ex?"#7a2fa0":CLOTH[(v*7)%6], style=v%4, acc=ex?-1:(v*2)%5, expr=ex?3:v%3;
+  const skin="#ffe0c7", ink="#2a1f2d";
+  let hairC=hair, eyeC=eye, bgC=bg;
+  if(fr){ // face cards: colours follow the suit, headwear follows the rank
+    const isRed=fs===1||fs===2, i=fr*4+fs;
+    cloth=isRed?["#b8322a","#c2456f","#a3312a","#d1495b"][fs]:["#1d2b4f","#2a2a35","#1f4a3a","#3a2f5a"][fs];
+    bgC=isRed?["#ffe2e2","#ffe9d6"][i%2]:["#e3e9f7","#e4f1ea"][i%2];
+    hairC=HAIR[(i*5)%9]; eyeC=EYE[(i*3)%7];
+    style={11:0,12:2,13:1,14:3}[fr]; acc=-1; expr={11:0,12:2,13:1,14:2}[fr];
+    if(fr===14) style=2;
+  }
   let g='<svg class="art" viewBox="8 6 84 118" preserveAspectRatio="xMidYMid slice" aria-hidden="true">';
-  g+='<rect width="100" height="140" fill="'+bg+'"/>';
+  g+='<rect width="100" height="140" fill="'+bgC+'"/>';
   for(let i=0;i<16;i++){const a=i*Math.PI/8+v; g+='<line x1="50" y1="64" x2="'+(50+90*Math.cos(a)).toFixed(1)+'" y2="'+(64+90*Math.sin(a)).toFixed(1)+'" stroke="#fff" stroke-width="'+(i%2?2:5)+'" opacity=".55"/>'}
   // back hair
-  if(style===1) g+='<path d="M18,62 Q16,24 50,22 Q84,24 82,62 L84,118 L16,118 Z" fill="'+hair+'"/>';           // long
-  else if(style===2) g+='<ellipse cx="50" cy="58" rx="33" ry="33" fill="'+hair+'"/>';                                // bob
-  else if(style===3) g+='<circle cx="16" cy="70" r="13" fill="'+hair+'"/><circle cx="84" cy="70" r="13" fill="'+hair+'"/><ellipse cx="50" cy="56" rx="31" ry="30" fill="'+hair+'"/>'; // twin tails
-  else g+='<path d="M20,64 L14,40 L28,44 L26,20 L40,32 L50,10 L60,32 L74,20 L72,44 L86,40 L80,64 Z" fill="'+hair+'"/>'; // spiky
+  if(style===1) g+='<path d="M18,62 Q16,24 50,22 Q84,24 82,62 L84,118 L16,118 Z" fill="'+hairC+'"/>';           // long
+  else if(style===2) g+='<ellipse cx="50" cy="58" rx="33" ry="33" fill="'+hairC+'"/>';                                // bob
+  else if(style===3) g+='<circle cx="16" cy="70" r="13" fill="'+hairC+'"/><circle cx="84" cy="70" r="13" fill="'+hairC+'"/><ellipse cx="50" cy="56" rx="31" ry="30" fill="'+hairC+'"/>'; // twin tails
+  else g+='<path d="M20,64 L14,40 L28,44 L26,20 L40,32 L50,10 L60,32 L74,20 L72,44 L86,40 L80,64 Z" fill="'+hairC+'"/>'; // spiky
   // shoulders and collar
   g+='<path d="M14,140 Q16,104 50,100 Q84,104 86,140 Z" fill="'+cloth+'"/><path d="M40,101 L50,114 L60,101" fill="none" stroke="#fff" stroke-width="3"/>';
   g+='<rect x="44" y="86" width="12" height="16" rx="5" fill="'+skin+'"/>';
   // face
   g+='<ellipse cx="50" cy="64" rx="26" ry="28" fill="'+skin+'"/>';
   // bangs
-  g+= style===0 ? '<path d="M23,62 L26,34 L36,46 L42,28 L50,44 L58,28 L64,46 L74,34 L77,62 L70,50 L62,58 L56,46 L50,56 L44,46 L38,58 L30,50 Z" fill="'+hair+'"/>'
-                : '<path d="M23,62 Q24,30 50,30 Q76,30 77,62 L71,48 L64,56 L58,44 L50,55 L42,44 L36,56 L29,48 Z" fill="'+hair+'"/>';
+  g+= style===0 ? '<path d="M23,62 L26,34 L36,46 L42,28 L50,44 L58,28 L64,46 L74,34 L77,62 L70,50 L62,58 L56,46 L50,56 L44,46 L38,58 L30,50 Z" fill="'+hairC+'"/>'
+                : '<path d="M23,62 Q24,30 50,30 Q76,30 77,62 L71,48 L64,56 L58,44 L50,55 L42,44 L36,56 L29,48 Z" fill="'+hairC+'"/>';
   // eyes
   const eyeAt=(x,y,wink)=>{
     if(expr===1||wink) return '<path d="M'+(x-7)+','+(y+1)+' Q'+x+','+(y-7)+' '+(x+7)+','+(y+1)+'" fill="none" stroke="'+ink+'" stroke-width="2.6" stroke-linecap="round"/>';
-    return '<ellipse cx="'+x+'" cy="'+y+'" rx="7" ry="9" fill="#fff"/><ellipse cx="'+x+'" cy="'+(y+1)+'" rx="5.6" ry="7.6" fill="'+eye+'"/>'+
+    return '<ellipse cx="'+x+'" cy="'+y+'" rx="7" ry="9" fill="#fff"/><ellipse cx="'+x+'" cy="'+(y+1)+'" rx="5.6" ry="7.6" fill="'+eyeC+'"/>'+
       '<ellipse cx="'+x+'" cy="'+(y+2)+'" rx="2.6" ry="3.6" fill="'+ink+'"/><circle cx="'+(x-2)+'" cy="'+(y-3)+'" r="2" fill="#fff"/><circle cx="'+(x+2.4)+'" cy="'+(y+4)+'" r="1" fill="#fff"/>'+
       '<path d="M'+(x-8)+','+(y-6)+' Q'+x+','+(y-12)+' '+(x+8)+','+(y-6)+'" fill="none" stroke="'+ink+'" stroke-width="2.6" stroke-linecap="round"/>';
   };
@@ -316,14 +330,25 @@ function mangaArt(v){
   else if(expr===0) g+='<path d="M44,80 Q50,90 56,80 Z" fill="#b23a48"/>';
   else g+='<path d="M44,81 Q50,86 56,81" fill="none" stroke="'+ink+'" stroke-width="2" stroke-linecap="round"/>';
   // accessories
-  if(acc===1) g+='<path d="M24,40 L22,14 L40,30 Z M76,40 L78,14 L60,30 Z" fill="'+hair+'"/><path d="M27,34 L26,20 L35,29 Z M73,34 L74,20 L65,29 Z" fill="#ffb3c1"/>'; // cat ears
+  if(acc===1) g+='<path d="M24,40 L22,14 L40,30 Z M76,40 L78,14 L60,30 Z" fill="'+hairC+'"/><path d="M27,34 L26,20 L35,29 Z M73,34 L74,20 L65,29 Z" fill="#ffb3c1"/>'; // cat ears
   if(acc===2) g+='<path d="M24,46 Q50,34 76,46" fill="none" stroke="#d1495b" stroke-width="5"/><path d="M76,46 l8,-6 l0,12 Z" fill="#d1495b"/>';               // headband
   if(acc===3) g+='<path d="M70,38 l2.6,5.6 l6,.6 l-4.6,4 l1.4,6 l-5.4,-3 l-5.4,3 l1.4,-6 l-4.6,-4 l6,-.6 Z" fill="#ffd23f" stroke="'+ink+'" stroke-width="1"/>';      // star clip
   if(acc===4) g+='<circle cx="39" cy="67" r="10" fill="none" stroke="'+ink+'" stroke-width="2"/><circle cx="61" cy="67" r="10" fill="none" stroke="'+ink+'" stroke-width="2"/><path d="M49,67 L51,67" stroke="'+ink+'" stroke-width="2"/>'; // glasses
   if(ex) g+='<path d="M22,44 Q30,14 8,10 Q30,4 50,30 Q70,4 92,10 Q70,14 78,44 Z" fill="#7a2fa0"/><path d="M50,30 Q60,12 92,10" fill="none" stroke="#e8a33d" stroke-width="2"/>'+
             '<circle cx="8" cy="10" r="5" fill="#e8a33d"/><circle cx="92" cy="10" r="5" fill="#e8a33d"/><path d="M22,44 Q50,36 78,44" fill="none" stroke="#e8a33d" stroke-width="4"/>'; // jester hat
+  if(fr){
+    const SUIT=["♠","♥","♦","♣"][fs], sc=(fs===1||fs===2)?"#b8322a":"#1d2421";
+    if(fr===14) g+='<path d="M16,140 Q18,106 50,102 Q82,106 84,140" fill="none" stroke="#fff" stroke-width="7"/><circle cx="30" cy="112" r="1.6" fill="'+ink+'"/><circle cx="70" cy="112" r="1.6" fill="'+ink+'"/>'+ // ermine collar
+      '<path d="M30,40 L30,20 L40,30 L50,14 L60,30 L70,20 L70,40 Z" fill="#f2c14e" stroke="#a87b16" stroke-width="1.5"/><circle cx="50" cy="32" r="3.4" fill="#d1495b"/><circle cx="37" cy="34" r="2" fill="#3a7bd5"/><circle cx="63" cy="34" r="2" fill="#3a7bd5"/>'; // crown
+    if(fr===13) g+='<path d="M32,40 Q50,26 68,40" fill="none" stroke="#f2c14e" stroke-width="4"/><path d="M50,28 l4,6 l-4,6 l-4,-6 Z" fill="#6ad1e3" stroke="#a87b16" stroke-width="1"/>'+ // tiara
+      '<circle cx="24" cy="80" r="2.4" fill="#f2c14e"/><circle cx="76" cy="80" r="2.4" fill="#f2c14e"/>'; // earrings
+    if(fr===12) g+='<path d="M22,52 Q22,24 50,22 Q78,24 78,52 L72,52 Q70,34 50,33 Q30,34 28,52 Z" fill="#b9c2cc" stroke="#6b7682" stroke-width="1.5"/><path d="M50,22 L50,52" stroke="#6b7682" stroke-width="1.5"/>'+ // helmet
+      '<path d="M50,23 Q56,4 76,6 Q66,10 64,20 Q60,14 50,23 Z" fill="'+cloth+'"/>'; // plume
+    if(fr===11) g+='<path d="M22,44 Q24,24 52,24 Q80,26 80,42 Q66,36 50,38 Q34,38 22,44 Z" fill="'+cloth+'"/><path d="M70,30 Q88,16 92,4 Q80,20 66,28 Z" fill="#f2c14e"/>'; // cap with feather
+    g+='<circle cx="50" cy="114" r="7.5" fill="#fff" stroke="'+sc+'" stroke-width="1.5"/><text x="50" y="118.6" text-anchor="middle" font-size="12" fill="'+sc+'" font-family="serif">'+SUIT+'</text>'; // suit emblem on the chest
+  }
   g+='</svg>';
-  return ART[v]=g;
+  return ART[key]=g;
 }
 
 function cardEl(c,faceUp,owner){
@@ -337,6 +362,12 @@ function cardEl(c,faceUp,owner){
     return el;
   }
   el.className="card "+(red(c)?"red":"blk");
+  if(rank(c)>=11){
+    const t=RANKS[rank(c)-1]+SUITS[suit(c)];
+    el.className+=" face";
+    el.innerHTML=mangaArt(0,rank(c),suit(c))+'<span class="tn">'+t+'</span><span class="tn b">'+t+'</span>';
+    return el;
+  }
   el.innerHTML='<span class="ix">'+RANKS[rank(c)-1]+'<i>'+SUITS[suit(c)]+'</i></span><span class="big">'+RANKS[rank(c)-1]+'<i>'+SUITS[suit(c)]+'</i></span>';
   return el;
 }
