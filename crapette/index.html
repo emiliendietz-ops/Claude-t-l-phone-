@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600;700&display=swap">
 <style>
-/* Layout: one-screen card table — opponent's piles, their 4 columns, the 5 centre piles side by side, my 4 columns, my piles. Single deliberate look: a felt table. */
+/* Layout: one-screen card table — opponent's talon/discard, then 5 shared columns with the 5 rising piles (4 suits + atouts) in a column on the right, then my talon/discard. Single deliberate look: a felt table. */
 :root{
   --felt:#1f4a3a; --felt-deep:#163829; --felt-line:#2c5e4b;
   --brass:#d7b56d; --ink:#f3efe4; --ink-soft:#b9c8bd;
@@ -39,14 +39,14 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 .pile{display:flex; flex-direction:column; align-items:center; gap:3px}
 .pile .lbl{font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft)}
 
-.board{display:flex; flex-direction:column; gap:8px}
+.board{display:flex; gap:calc(var(--gap)*2); justify-content:center; align-items:flex-start}
 .row{display:grid; grid-template-columns:1fr var(--cw) 1fr; gap:6px; align-items:center}
-.cols{display:flex; justify-content:center; gap:var(--gap)}
+.cols{display:flex; gap:var(--gap)}
 .tab{position:relative; width:var(--cw); height:var(--colh); border-radius:6px; flex:none}
 .tab::before{content:""; position:absolute; left:0; width:var(--cw); height:var(--ch); border:1px dashed var(--felt-line); border-radius:6px; box-sizing:border-box}
 .tab.U::before{bottom:0} .tab.D::before{top:0}
 .tab .card{position:absolute; left:0}
-.centre{display:flex; justify-content:center; gap:var(--gap); padding:8px; border-radius:12px; background:rgba(0,0,0,.16)}
+.centre{display:flex; flex-direction:column; gap:var(--gap); padding:6px; margin:-6px; border-radius:12px; background:rgba(0,0,0,.16)}
 
 .slot{position:relative; width:var(--cw); height:var(--ch); border-radius:6px; border:1px dashed var(--felt-line); box-sizing:border-box; cursor:pointer; flex:none}
 .slot.fond.redmark::after{color:#6b4a3e}
@@ -124,14 +124,14 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
   <section class="panel" id="rulesPanel" hidden>
     <h2>Règles en bref</h2>
     <ul class="rules">
-      <li>Chacun a sa <b>crapette</b> (13 cartes, celle du dessus visible), son <b>talon</b> et sa <b>défausse</b>. But : être le premier à vider les trois.</li>
-      <li>On joue avec <b>un seul jeu de tarot</b> (78 cartes), partagé en deux : 39 cartes chacun. Chaque couleur va de l'As au Roi en passant par le Valet, le Cavalier et la Dame.</li>
-      <li><b>Au milieu, 5 piles</b> : une par couleur (♠ ♥ ♦ ♣), où l'on monte de l'As au Roi (… 10, V, C, D, R), et une pour les <b>atouts</b> (★), qui commence par l'Excuse puis monte de 1 à 21.</li>
-      <li>Les atouts ne vont pas dans les colonnes des côtés.</li>
-      <li><b>Colonnes</b> sur les côtés : on descend en alternant rouge et noir, une carte à la fois. Une colonne vide accepte n'importe quelle carte.</li>
-      <li>On peut <b>charger l'adversaire</b> : poser une carte sur sa crapette ou sa défausse si elle est de la même enseigne, juste au-dessus ou au-dessous.</li>
+      <li>Chacun a son <b>talon</b> et sa <b>défausse</b>. But : être le premier à vider les deux.</li>
+      <li>On joue avec <b>un seul jeu de tarot</b> (78 cartes). Au début, une carte va dans chacune des 5 colonnes du milieu, et le reste est partagé entre les deux talons. Chaque couleur va de l'As au Roi en passant par le Valet, le Cavalier et la Dame.</li>
+      <li><b>Sur le côté, 5 piles</b> : une par couleur (♠ ♥ ♦ ♣), où l'on monte de l'As au Roi (… 10, V, C, D, R), et une pour les <b>atouts</b> (★), qui commence par l'Excuse puis monte de 1 à 21.</li>
+      <li>Les atouts ne vont pas dans les colonnes du milieu.</li>
+      <li><b>5 colonnes au milieu</b>, communes aux deux joueurs : on descend en alternant rouge et noir, une carte à la fois. Une colonne vide accepte n'importe quelle carte de couleur.</li>
+      <li>On peut <b>charger l'adversaire</b> : poser une carte sur sa défausse si elle est de la même enseigne, juste au-dessus ou au-dessous.</li>
       <li>Touchez le talon pour retourner une carte. Si elle ne se joue pas, posez-la sur votre défausse : le tour passe.</li>
-      <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les as ou les atouts, et la carte de la crapette avant celle du talon.</li>
+      <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les piles du côté (couleurs ou atouts).</li>
       <li>Si l'adversaire oublie une obligation, appuyez sur <b>Crapette !</b> : son tour s'arrête et c'est à vous.</li>
       <li>Pour jouer : touchez une carte, puis l'endroit où la poser (en vert). Touchez deux fois une carte pour l'envoyer sur les as ou les atouts.</li>
     </ul>
@@ -161,18 +161,16 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 
 function newGame(names){
-  const st={v:3,seq:0,turn:0,flipped:null,fault:null,winner:null,msg:"",names:names||["Joueur 1","Joueur 2"],
-    players:[],tab:[[],[],[],[],[],[],[],[]],fond:[[],[],[],[]],atout:[[]]};
+  // 5 shared columns in the middle, each starting with one suit card; the other 73 cards are dealt into the two talons.
+  // Each player has only a talon and a discard (crap stays empty: no crapette in this version).
+  const st={v:4,seq:0,turn:0,flipped:null,fault:null,winner:null,msg:"",names:names||["Joueur 1","Joueur 2"],
+    players:[],tab:[[],[],[],[],[]],fond:[[],[],[],[]],atout:[[]]};
   const all=shuffle(Array.from({length:N},(_,i)=>i));
-  for(let p=0;p<2;p++){
-    const d=all.splice(0,N/2); // 39 cards each: 13 crapette, 4 columns, 22 talon
-    const crap=d.splice(0,13);
-    for(let k=0;k<4;k++){ const i=d.findIndex(c=>!isTrump(c)); st.tab[p*4+k].push(d.splice(i,1)[0]) } // columns start with suit cards
-    st.players.push({crap,talon:d,def:[]});
-  }
-  const pw=c=>isTrump(c)?0:rank(c), a=pw(top(st.players[0].crap)), b=pw(top(st.players[1].crap));
-  st.turn = b>a ? 1 : 0;
-  st.msg = st.names[st.turn]+" commence (carte de crapette la plus forte).";
+  for(let k=0;k<5;k++){ const i=all.findIndex(c=>!isTrump(c)); st.tab[k].push(all.splice(i,1)[0]) }
+  st.players.push({crap:[],talon:all.filter((_,i)=>i%2===0),def:[]});
+  st.players.push({crap:[],talon:all.filter((_,i)=>i%2===1),def:[]});
+  st.turn = Math.random()<.5 ? 0 : 1;
+  st.msg = st.names[st.turn]+" commence (tiré au sort).";
   return st;
 }
 
@@ -195,9 +193,9 @@ function fits(st,card,d,s){
   if(d==="md") return s==="x";
   return false;
 }
-const ALLD=["a0","f0","f1","f2","f3","t0","t1","t2","t3","t4","t5","t6","t7","oc","od","md"];
+const ALLD=["a0","f0","f1","f2","f3","t0","t1","t2","t3","t4","od","md"];
 function dests(st,s){const c=srcCard(st,s); if(c===null) return []; return ALLD.filter(d=>fits(st,c,d,s))}
-const SRCS=["c","x","t0","t1","t2","t3","t4","t5","t6","t7"];
+const SRCS=["x","t0","t1","t2","t3","t4"];
 const UP=d=>d[0]==="f"||d[0]==="a";
 function foundationAvailable(st){return SRCS.some(s=>dests(st,s).some(UP))}
 function crapPlayable(st){return dests(st,"c").length>0}
@@ -254,7 +252,7 @@ const ls={get(k){try{return JSON.parse(localStorage.getItem(LS+k))}catch(e){retu
 let mode=ls.get(".mode")||"local", seat=ls.get(".seat"), state=null, sel=null;
 let db=null, gameRef=null, dbReady=false, onlineState=null, unsub=null, writing=false;
 let localState=ls.get(".game");
-if(!localState||localState.v!==3) {localState=newGame(); ls.set(".game",localState)}
+if(!localState||localState.v!==4) {localState=newGame(); ls.set(".game",localState)}
 state = localState;
 
 const $=id=>document.getElementById(id);
@@ -308,8 +306,7 @@ function playerBox(p,isTopRow){
   info.querySelector(".pmeta").textContent=total+" cartes restantes";
   const piles=document.createElement("div"); piles.className="piles";
   const own=p===me;
-  const kC=own?"c":"oc", kD=own?"md":"od";
-  piles.appendChild(slot(kC,"",top(P.crap),true,P.crap.length,"Crapette"));
+  const kD=own?"md":"od";
   const talonTop=P.talon.length?P.talon[P.talon.length-1]:(P.def.length&&own&&state.flipped===null?P.def[0]:null);
   piles.appendChild(slot(own?"talon":"-","",talonTop,false,P.talon.length,"Talon",p));
   if(own) piles.appendChild(slot("x","",state.flipped,true,null,"Retournée"));
@@ -323,28 +320,25 @@ function tabEl(i,side,areaH,ch){
   const pile=state.tab[i], n=pile.length;
   el.setAttribute("aria-label","Colonne"+(n?" : "+pile.map(nameOf).join(", "):" vide"));
   const step=n>1?Math.min(ch*0.3,(areaH-ch)/(n-1)):0;
-  // fan away from the centre piles: the top card (last) sits nearest the middle
+  // columns cascade downwards: the playable card (last) is the lowest one
   pile.forEach((c,k)=>{const ce=cardEl(c,true); ce.style.zIndex=k+1;
-    if(side==="U") ce.style.bottom=((n-1-k)*step)+"px"; else ce.style.top=((n-1-k)*step)+"px";
+    if(side==="U") ce.style.bottom=((n-1-k)*step)+"px"; else ce.style.top=(k*step)+"px";
     el.appendChild(ce)});
   return el;
 }
 
 function render(){
   const W=Math.min(document.querySelector(".wrap").clientWidth-24, 596);
-  const cw=Math.max(40,Math.min(76,Math.floor(W/5.9))), ch=Math.round(cw*1.4), gap=Math.round(cw*0.18);
-  const colH=Math.round(ch*2.1);
+  const cw=Math.max(38,Math.min(72,Math.floor(W/7.3))), ch=Math.round(cw*1.4), gap=Math.round(cw*0.16);
+  const colH=5*ch+4*gap;
   const rs=document.documentElement.style;
   rs.setProperty("--cw",cw+"px"); rs.setProperty("--gap",gap+"px"); rs.setProperty("--colh",colH+"px");
   const vs=viewSeat();
   playerBox(1-vs,true); playerBox(vs,false);
   const board=$("board"); board.innerHTML="";
-  const up=document.createElement("div"), mid=document.createElement("div"), down=document.createElement("div");
-  up.className=down.className="cols"; mid.className="centre";
-  for(let k=0;k<4;k++){
-    up.appendChild(tabEl((1-vs)*4+k,"U",colH,ch));   // opponent's columns, above the centre
-    down.appendChild(tabEl(vs*4+k,"D",colH,ch));     // my columns, below the centre
-  }
+  const cols=document.createElement("div"), mid=document.createElement("div");
+  cols.className="cols"; mid.className="centre";
+  for(let k=0;k<5;k++) cols.appendChild(tabEl(k,"D",colH,ch));
   // centre: one pile per suit (A → R) and one for the atouts (Excuse, 1 → 21)
   const NAMES=["Pique","Cœur","Carreau","Trèfle"];
   for(let f=0;f<4;f++){
@@ -354,7 +348,7 @@ function render(){
   }
   {const pile=state.atout[0]; const el=slot("a0","fond",top(pile),true,null,"").firstChild; el.dataset.mark="★";
    el.setAttribute("aria-label","Atouts"+(pile.length?" : "+nameOf(top(pile)):" vide")); mid.appendChild(el)}
-  board.append(up,mid,down);
+  board.append(cols,mid);
   // highlights
   if(sel){
     document.querySelectorAll('[data-key="'+sel+'"]').forEach(e=>{const c=e.classList.contains("tab")?e.lastElementChild:e.querySelector(".card"); if(c) c.classList.add("sel")});
@@ -447,12 +441,12 @@ async function connect(){
     const timer=setTimeout(()=>{ if(!dbReady){onlineMsg="La partie en ligne ne répond pas encore… vérifiez la connexion."; render()} },10000);
     unsub=gameRef.onSnapshot(snap=>{
       clearTimeout(timer);
-      if(!snap.exists||(snap.data()||{}).v!==3){ // first device creates the shared game (or replaces an older version)
+      if(!snap.exists||(snap.data()||{}).v!==4){ // first device creates the shared game (or replaces an older version)
         if(!dbReady){ dbReady=true; const ns=newGame(localState.names); onlineState=ns; if(mode==="online"){state=ns} gameRef.set(ns).catch(()=>{}); render(); }
         return;
       }
       const d=snap.data(); dbReady=true;
-      if(d&&d.v===3&&(!onlineState||d.seq>=onlineState.seq||!writing)){
+      if(d&&d.v===4&&(!onlineState||d.seq>=onlineState.seq||!writing)){
         onlineState=clone(d);
         if(mode==="online"){ state=onlineState; if(sel&&!canAct()) sel=null; render(); if(!$("setup").hidden) syncSetup() }
       }
