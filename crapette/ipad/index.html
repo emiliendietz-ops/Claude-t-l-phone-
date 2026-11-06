@@ -157,7 +157,7 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
       <li>On joue avec <b>un seul jeu de tarot</b> (78 cartes). Au début, une carte va dans chacune des 5 colonnes du milieu, et le reste est partagé entre les deux talons. Chaque couleur va de l'As au Roi en passant par le Valet, le Cavalier et la Dame.</li>
       <li><b>Sur le côté, 5 piles</b> : une par couleur (♠ ♥ ♦ ♣), où l'on monte de l'As au Roi (… 10, V, C, D, R), et une pour les <b>atouts</b> (★), qui commence par l'Excuse puis monte de 1 à 21.</li>
       <li>Les atouts ne vont pas dans les colonnes du milieu.</li>
-      <li><b>5 colonnes au milieu</b>, communes aux deux joueurs : on descend en alternant rouge et noir, une carte à la fois. Une colonne vide accepte n'importe quelle carte de couleur.</li>
+      <li><b>5 colonnes au milieu</b>, communes aux deux joueurs : on descend en alternant rouge et noir. On peut déplacer une carte ou toute une suite (touchez la première carte de la suite). Une colonne vide accepte n'importe quelle carte de couleur.</li>
       <li>On peut <b>charger l'adversaire</b> : poser une carte sur sa défausse en alternant les couleurs, juste au-dessus ou au-dessous (Roi noir puis Dame rouge, par exemple). Les atouts se chargent sur un atout, juste au-dessus ou au-dessous.</li>
       <li><b>Ma défausse</b> : on peut rejouer sa dernière carte (touchez votre défausse), ou sa dernière suite (descendante, couleurs alternées) avec « Voir ma défausse ». Une suite se pose dans une colonne ou sur la défausse de l'adversaire. Les cartes plus anciennes restent bloquées.</li>
       <li>Touchez le talon pour retourner une carte. Si elle ne se joue pas, défaussez-la (bouton « Défausser… », ou touchez-la puis votre défausse) : le tour passe.</li>
@@ -219,14 +219,20 @@ function srcCard(st,s){
   const P=st.players[st.turn];
   if(s==="c") return top(P.crap);
   if(s==="x") return st.flipped;
+  if(s[0]==="t"&&s.includes(".")){ const r=runOf(st,s); return r?r[0]:null }
   if(s[0]==="t") return top(st.tab[+s.slice(1)]);
   if(s[0]==="d"){ const r=runOf(st,s); return r?r[0]:null }
   return null;
 }
 // cards taken from my discard: "d" = the top card, "d<i>" = from index i up to the top (must be a descending run of alternating colours)
+// "t<c>.<k>" = cards of column c from index k to the bottom of the column (same rule: descending, alternating colours)
+const baseKey=s=>s[0]==="t"?s.split(".")[0]:s;
+const isRun=s=>!!s&&(s[0]==="d"||(s[0]==="t"&&s.includes(".")));
 function runOf(st,s){
-  const D=st.players[st.turn].def; if(!D.length) return null;
-  const i = s==="d" ? D.length-1 : +s.slice(1);
+  let D,i;
+  if(s[0]==="t"){ const [c,k]=s.slice(1).split("."); D=st.tab[+c]; i=+k }
+  else { D=st.players[st.turn].def; i = s==="d" ? D.length-1 : +s.slice(1) }
+  if(!D||!D.length) return null;
   if(!(i>=0&&i<D.length)) return null;
   const run=D.slice(i);
   for(let k=1;k<run.length;k++){const a=run[k-1],b=run[k]; if(isTrump(a)||isTrump(b)||red(a)===red(b)||rank(b)!==rank(a)-1) return null}
@@ -240,11 +246,11 @@ function altFits(t,card){
 function fits(st,card,d,s){
   const O=st.players[1-st.turn];
   if(card===null||card===undefined) return false;
-  const multi = s&&s[0]==="d"&&runOf(st,s).length>1;
+  const multi = isRun(s)&&runOf(st,s).length>1;
   if(multi && !(d[0]==="t"||d==="od")) return false; // a run goes to a column or onto the opponent's discard
   if(d[0]==="f"){ const i=+d.slice(1); if(suit(card)!==i) return false; const t=top(st.fond[i]); return t===null? rank(card)===1 : rank(card)===rank(t)+1}
   if(d[0]==="a"){ if(!isTrump(card)) return false; const t=top(st.atout[+d.slice(1)]); return t===null? rank(card)===0 : rank(card)===rank(t)+1}
-  if(d[0]==="t"){ if(d===s||isTrump(card)) return false; const t=top(st.tab[+d.slice(1)]); return t===null || (red(t)!==red(card)&&rank(card)===rank(t)-1)}
+  if(d[0]==="t"){ if(d===baseKey(s)||isTrump(card)) return false; const t=top(st.tab[+d.slice(1)]); return t===null || (red(t)!==red(card)&&rank(card)===rank(t)-1)}
   if(d==="oc"||d==="od"){const t=top(d==="oc"?O.crap:O.def); return t!==null&&altFits(t,card)}
   if(d==="md") return s==="x";
   return false;
@@ -266,7 +272,7 @@ function doMove(st0,s,d){
   if(s==="x" && crapPlayable(st0)) noteFault(st,"la carte de la crapette devait être jouée avant le talon");
   let card;
   let run=null;
-  if(s[0]==="d"){ run=runOf(st,s); P.def.splice(P.def.length-run.length) }
+  if(isRun(s)){ run=runOf(st,s); (s[0]==="d"?P.def:st.tab[+baseKey(s).slice(1)]).splice(-run.length) }
   if(s==="c") card=P.crap.pop(); else if(s==="x"){card=st.flipped; st.flipped=null} else if(run) card=run[0]; else card=st.tab[+s.slice(1)].pop();
   const who=st.names[me];
   if(d==="md"){
@@ -462,7 +468,7 @@ function tabEl(i,side,areaH,ch){
   el.setAttribute("aria-label","Colonne"+(n?" : "+pile.map(nameOf).join(", "):" vide"));
   const step=n>1?Math.min(ch*0.3,(areaH-ch)/(n-1)):0;
   // columns cascade downwards: the playable card (last) is the lowest one
-  pile.forEach((c,k)=>{const ce=cardEl(c,true); ce.style.zIndex=k+1;
+  pile.forEach((c,k)=>{const ce=cardEl(c,true); ce.style.zIndex=k+1; ce.dataset.idx=k;
     if(side==="U") ce.style.bottom=((n-1-k)*step)+"px"; else ce.style.top=(k*step)+"px";
     el.appendChild(ce)});
   return el;
@@ -492,7 +498,8 @@ function render(){
   board.append(document.createElement("div"),cols,mid); // empty left cell keeps the 5 columns in the middle of the screen
   // highlights
   if(sel){
-    document.querySelectorAll('[data-key="'+(sel[0]==="d"?"md":sel)+'"]').forEach(e=>{const c=e.classList.contains("tab")?e.lastElementChild:e.querySelector(".card"); if(c) c.classList.add("sel")});
+    if(sel[0]==="t"&&sel.includes(".")){ const [c,k]=sel.slice(1).split("."); document.querySelectorAll('[data-key="t'+c+'"] .card').forEach(e=>{if(+e.dataset.idx>=+k) e.classList.add("sel")}) }
+    else document.querySelectorAll('[data-key="'+(sel[0]==="d"?"md":sel)+'"]').forEach(e=>{const c=e.classList.contains("tab")?e.lastElementChild:e.querySelector(".card"); if(c) c.classList.add("sel")});
     dests(state,sel).forEach(d=>document.querySelectorAll('[data-key="'+d+'"]').forEach(e=>e.classList.add("target")));
   }
   // status + actions
@@ -537,13 +544,20 @@ function onKey(key){
       if(f){commit(doMove(state,sel,f));return}
       sel=null; render(); return;
     }
-    if(dests(state,sel).includes(key)){commit(doMove(state,sel,key));return}
+    if(dests(state,sel).includes(baseKey(key))){commit(doMove(state,sel,baseKey(key)));return}
+  }
+  if(key.includes(".")){ // a card inside a column: take it with the cards below it
+    if(runOf(state,key)){sel=key; render(); return}
+    setStatus("Ces cartes ne se suivent pas : on ne déplace qu'une suite qui descend en alternant rouge et noir.","warn"); sel=null; return;
   }
   if(key==="md"){ if(state.players[state.turn].def.length){sel="d"; render()} return }
   if(SRCS.includes(key)&&srcCard(state,key)!==null){sel=key; render(); return}
   sel=null; render();
 }
-document.addEventListener("click",e=>{const t=e.target.closest("[data-key]"); if(t&&!t.closest(".panel")) onKey(t.dataset.key)});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-key]"); if(!t||t.closest(".panel")) return;
+  let key=t.dataset.key; const c=e.target.closest(".tab .card");
+  if(c&&t.classList.contains("tab")&&+c.dataset.idx<t.children.length-1) key+="."+c.dataset.idx; // not the last card: a run
+  onKey(key)});
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.dataset&&e.target.dataset.key){e.preventDefault();onKey(e.target.dataset.key)}});
 window.addEventListener("resize",()=>render());
 
