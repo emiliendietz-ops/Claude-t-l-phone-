@@ -1,0 +1,134 @@
+<title>Ardoise Crapette</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@500;700&display=swap">
+<style>
+/* Layout: a toolbar over a full-width drawing sheet (felt green), with a send bar below. */
+:root{
+  --felt:#1f4a3a; --felt-deep:#163829; --line:#2c5e4b; --brass:#d7b56d; --ink:#f3efe4; --soft:#b9c8bd;
+  --f-display:"Young Serif", Georgia, serif; --f-ui:"Figtree", system-ui, sans-serif; color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--felt-deep); color:var(--ink); font-family:var(--f-ui); -webkit-user-select:none; user-select:none}
+.wrap{max-width:900px; margin:0 auto; padding-left:max(12px, env(safe-area-inset-left,0px)); padding-right:max(12px, env(safe-area-inset-right,0px)); padding-block:10px 16px; display:flex; flex-direction:column; gap:10px; height:100%; box-sizing:border-box}
+h1{font-family:var(--f-display); font-weight:400; color:var(--brass); font-size:1.35rem; margin:0}
+.hint{color:var(--soft); font-size:.85rem; margin:0}
+.bar{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.btn{font:600 .85rem var(--f-ui); color:var(--ink); background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); border-radius:8px; padding:8px 11px; cursor:pointer}
+.btn.on{background:var(--brass); color:#2a2210; border-color:var(--brass)}
+.btn.primary{background:var(--brass); color:#2a2210; border-color:var(--brass); font-size:.95rem; padding:10px 16px}
+.btn:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+.sw{width:30px; height:30px; border-radius:50%; border:2px solid rgba(255,255,255,.25); cursor:pointer; padding:0}
+.sw.on{border-color:var(--brass); box-shadow:0 0 0 2px var(--brass)}
+.sep{width:1px; height:24px; background:var(--line)}
+.sheet{flex:1; min-height:420px; position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--line); background:var(--felt)}
+canvas{position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair}
+.send{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.msg{font-size:.9rem; color:var(--soft)} .msg.ok{color:#8fe0a8} .msg.bad{color:#f08a7a}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Ardoise Crapette</h1>
+    <p class="hint">Dessine la table comme vous jouez : où vont les piles, les colonnes, les atouts… Le bouton « Carte » pose un rectangle de carte à l'endroit où tu touches. Puis appuie sur « Envoyer à Claude ».</p>
+  </div>
+  <div class="bar" role="toolbar" aria-label="Outils">
+    <button class="btn on" type="button" data-tool="pen" id="tPen">Crayon</button>
+    <button class="btn" type="button" data-tool="card" id="tCard">Carte</button>
+    <button class="btn" type="button" data-tool="erase" id="tErase">Gomme</button>
+    <span class="sep"></span>
+    <button class="sw on" type="button" data-color="#ffffff" style="background:#ffffff" aria-label="Blanc"></button>
+    <button class="sw" type="button" data-color="#f2d27a" style="background:#f2d27a" aria-label="Jaune"></button>
+    <button class="sw" type="button" data-color="#e0453a" style="background:#e0453a" aria-label="Rouge"></button>
+    <button class="sw" type="button" data-color="#6aa8ff" style="background:#6aa8ff" aria-label="Bleu"></button>
+    <button class="sw" type="button" data-color="#111111" style="background:#111111" aria-label="Noir"></button>
+    <span class="sep"></span>
+    <button class="btn" type="button" data-size="3" id="sThin">Fin</button>
+    <button class="btn on" type="button" data-size="6" id="sMid">Moyen</button>
+    <button class="btn" type="button" data-size="12" id="sBig">Épais</button>
+    <span class="sep"></span>
+    <button class="btn" type="button" id="undo">Annuler</button>
+    <button class="btn" type="button" id="clear">Tout effacer</button>
+    <button class="btn" type="button" id="clearOk" hidden>Oui, effacer</button>
+  </div>
+  <div class="sheet"><canvas id="cv" aria-label="Zone de dessin"></canvas></div>
+  <div class="send">
+    <button class="btn primary" type="button" id="send">Envoyer à Claude</button>
+    <span class="msg" id="msg" aria-live="polite"></span>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const cv=document.getElementById("cv"), ctx=cv.getContext("2d"), msg=document.getElementById("msg");
+const BG="#1f4a3a";
+let tool="pen", color="#ffffff", size=6, drawing=false, last=null, history=[];
+function setMsg(t,c){msg.textContent=t; msg.className="msg"+(c?" "+c:"")}
+
+function resize(){
+  const r=cv.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1);
+  const old=cv.width?cv.toDataURL():null;
+  cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=BG; ctx.fillRect(0,0,r.width,r.height);
+  if(old){const im=new Image(); im.onload=()=>ctx.drawImage(im,0,0,r.width,r.height); im.src=old}
+}
+function snap(){ try{ history.push(ctx.getImageData(0,0,cv.width,cv.height)); if(history.length>30) history.shift() }catch(e){} }
+function pos(e){const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}}
+function line(a,b){
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  ctx.strokeStyle= tool==="erase"? BG : color; ctx.lineWidth= tool==="erase"? size*4 : size;
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+}
+function card(p){
+  const w=Math.max(36,cv.getBoundingClientRect().width/12), h=w*1.4;
+  ctx.lineWidth=Math.max(2,size/2); ctx.strokeStyle=color; ctx.fillStyle="rgba(255,255,255,.12)";
+  const x=p.x-w/2, y=p.y-h/2, r=6;
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+}
+cv.addEventListener("pointerdown",e=>{
+  e.preventDefault(); snap(); const p=pos(e);
+  if(tool==="card"){card(p); return}
+  drawing=true; last=p; cv.setPointerCapture(e.pointerId); line(p,{x:p.x+.01,y:p.y+.01});
+});
+cv.addEventListener("pointermove",e=>{ if(!drawing) return; const p=pos(e); line(last,p); last=p });
+["pointerup","pointercancel","pointerleave"].forEach(t=>cv.addEventListener(t,()=>{drawing=false}));
+
+document.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>{tool=b.dataset.tool; document.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("on",x===b))});
+document.querySelectorAll("[data-color]").forEach(b=>b.onclick=()=>{color=b.dataset.color; if(tool==="erase"){tool="pen"; document.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("on",x.dataset.tool==="pen"))} document.querySelectorAll("[data-color]").forEach(x=>x.classList.toggle("on",x===b))});
+document.querySelectorAll("[data-size]").forEach(b=>b.onclick=()=>{size=+b.dataset.size; document.querySelectorAll("[data-size]").forEach(x=>x.classList.toggle("on",x===b))});
+document.getElementById("undo").onclick=()=>{const im=history.pop(); if(im){ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.putImageData(im,0,0); ctx.restore()}};
+document.getElementById("clear").onclick=()=>{document.getElementById("clearOk").hidden=false};
+document.getElementById("clearOk").onclick=()=>{snap(); const r=cv.getBoundingClientRect(); ctx.fillStyle=BG; ctx.fillRect(0,0,r.width,r.height); document.getElementById("clearOk").hidden=true};
+
+let assets=null, db=null;
+if(window.claude&&window.claude.use){
+  window.claude.use("assets").then(a=>{assets=a}).catch(()=>{});
+  window.claude.use("db").then(d=>{db=d}).catch(()=>{});
+}
+document.getElementById("send").onclick=async()=>{
+  if(!db){ setMsg("L'envoi n'est pas disponible ici : ouvre cette page sur claude.ai, connecté à ton compte.","bad"); return }
+  setMsg("Envoi en cours…");
+  try{
+    const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+    const at=new Date().toISOString(), docId="d"+Date.now();
+    if(assets){
+      const up=await assets.upload(blob);
+      await db.doc("dessins/"+docId).set({asset:up.id, url:up.url, at});
+    } else {
+      // fallback: a smaller JPEG kept directly in the document
+      const small=document.createElement("canvas"), k=Math.min(1,900/cv.width);
+      small.width=Math.round(cv.width*k); small.height=Math.round(cv.height*k);
+      small.getContext("2d").drawImage(cv,0,0,small.width,small.height);
+      await db.doc("dessins/"+docId).set({image:small.toDataURL("image/jpeg",0.75), at});
+    }
+    setMsg("Envoyé ! Écris-moi « c'est envoyé » dans la conversation et je regarde ton dessin.","ok");
+  }catch(e){ setMsg("L'envoi n'a pas marché ("+(e&&e.code||"erreur")+"). Réessaie dans un instant.","bad") }
+};
+
+window.addEventListener("resize",resize);
+resize();
+})();
+</script>
