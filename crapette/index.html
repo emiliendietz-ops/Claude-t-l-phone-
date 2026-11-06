@@ -8,7 +8,7 @@
   --felt:#1f4a3a; --felt-deep:#163829; --felt-line:#2c5e4b;
   --brass:#d7b56d; --ink:#f3efe4; --ink-soft:#b9c8bd;
   --card:#fbf8f1; --card-edge:#d9d2c3; --red:#b8322a; --black:#1d2421;
-  --back-a:#2e4f8f; --back-b:#8f2e3c; --hl:#f2d27a; --ok:#7fd49b; --bad:#f08a7a;
+  --trump:#5a3a86; --trump-bg:#f1eaf8; --back-a:#2e4f8f; --back-b:#8f2e3c; --hl:#f2d27a; --ok:#7fd49b; --bad:#f08a7a;
   --f-display:"Young Serif", Georgia, serif; --f-ui:"Figtree", system-ui, sans-serif;
   --cw:48px; --ch:calc(var(--cw)*1.4);
   color-scheme:dark;
@@ -39,15 +39,18 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 .pile{display:flex; flex-direction:column; align-items:center; gap:3px}
 .pile .lbl{font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft)}
 
-.board{display:flex; flex-direction:column; gap:6px}
-.row{display:grid; grid-template-columns:1fr var(--cw) var(--cw) 1fr; gap:6px; align-items:center}
+.board{display:grid; grid-template-columns:minmax(0,1fr) var(--cw) minmax(0,1fr); gap:8px}
+.side{display:flex; flex-direction:column; justify-content:space-around; gap:6px; min-width:0}
+.centre{display:flex; flex-direction:column; gap:6px; padding:6px; margin:-6px; border-radius:10px; background:rgba(0,0,0,.14)}
+.row{display:grid; grid-template-columns:1fr var(--cw) 1fr; gap:6px; align-items:center}
 .tab{position:relative; height:var(--ch); border-radius:6px}
 .tab::before{content:""; position:absolute; top:0; width:var(--cw); height:var(--ch); border:1px dashed var(--felt-line); border-radius:6px; box-sizing:border-box}
 .tab.L::before{right:0} .tab.R::before{left:0}
 .tab .card{position:absolute; top:0}
 
 .slot{position:relative; width:var(--cw); height:var(--ch); border-radius:6px; border:1px dashed var(--felt-line); box-sizing:border-box; cursor:pointer; flex:none}
-.slot.fond::after{content:"A"; position:absolute; inset:0; display:grid; place-items:center; font-family:var(--f-display); color:var(--felt-line); font-size:calc(var(--cw)*.42)}
+.slot.fond.redmark::after{color:#6b4a3e}
+.slot.fond::after{content:attr(data-mark); position:absolute; inset:0; display:grid; place-items:center; font-family:var(--f-display); color:var(--felt-line); font-size:calc(var(--cw)*.42)}
 .slot .card{position:absolute; inset:-1px}
 .count{position:absolute; right:-6px; bottom:-6px; background:#0d2219; color:var(--ink); font-size:.62rem; font-weight:700; border-radius:9px; padding:1px 5px; border:1px solid var(--felt-line); z-index:5; font-variant-numeric:tabular-nums}
 
@@ -58,6 +61,8 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 .card .big i{font-style:normal; font-size:calc(var(--cw)*.27); margin-top:1px}
 .card::after{content:""}
 .card.red{color:var(--red)} .card.blk{color:var(--black)}
+.card.trump{color:var(--trump); background:linear-gradient(var(--trump-bg),var(--trump-bg)), var(--card)}
+.card.excuse .ix,.card.excuse .big{font-size:calc(var(--cw)*.4)}
 .card.back{background:repeating-linear-gradient(45deg, rgba(255,255,255,.13) 0 3px, transparent 3px 7px), var(--back-a); border:2px solid #fff3}
 .card.back.d1{background:repeating-linear-gradient(-45deg, rgba(255,255,255,.13) 0 3px, transparent 3px 7px), var(--back-b)}
 .card .deck{position:absolute; left:2px; bottom:2px; width:6px; height:6px; border-radius:50%; background:var(--back-a)}
@@ -106,8 +111,8 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
       </div>
     </div>
     <div class="line">
-      <label for="name0">Nom du joueur 1 (dos bleus)<input id="name0" maxlength="16"></label>
-      <label for="name1">Nom du joueur 2 (dos rouges)<input id="name1" maxlength="16"></label>
+      <label for="name0">Nom du joueur 1<input id="name0" maxlength="16"></label>
+      <label for="name1">Nom du joueur 2<input id="name1" maxlength="16"></label>
     </div>
     <div class="line">
       <button class="btn primary" id="btnNew" type="button">Nouvelle partie</button>
@@ -120,13 +125,15 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
     <h2>Règles en bref</h2>
     <ul class="rules">
       <li>Chacun a sa <b>crapette</b> (13 cartes, celle du dessus visible), son <b>talon</b> et sa <b>défausse</b>. But : être le premier à vider les trois.</li>
-      <li><b>As au centre</b> : on y monte par couleur, de l'As au Roi.</li>
+      <li>On joue avec <b>un seul jeu de tarot</b> (78 cartes), partagé en deux : 39 cartes chacun. Chaque couleur va de l'As au Roi en passant par le Valet, le Cavalier et la Dame.</li>
+      <li><b>Au milieu, 5 piles</b> : une par couleur (♠ ♥ ♦ ♣), où l'on monte de l'As au Roi (… 10, V, C, D, R), et une pour les <b>atouts</b> (★), qui commence par l'Excuse puis monte de 1 à 21.</li>
+      <li>Les atouts ne vont pas dans les colonnes des côtés.</li>
       <li><b>Colonnes</b> sur les côtés : on descend en alternant rouge et noir, une carte à la fois. Une colonne vide accepte n'importe quelle carte.</li>
       <li>On peut <b>charger l'adversaire</b> : poser une carte sur sa crapette ou sa défausse si elle est de la même enseigne, juste au-dessus ou au-dessous.</li>
       <li>Touchez le talon pour retourner une carte. Si elle ne se joue pas, posez-la sur votre défausse : le tour passe.</li>
-      <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les as, et la carte de la crapette avant celle du talon.</li>
+      <li><b>Obligations</b> : jouer d'abord tout ce qui peut monter sur les as ou les atouts, et la carte de la crapette avant celle du talon.</li>
       <li>Si l'adversaire oublie une obligation, appuyez sur <b>Crapette !</b> : son tour s'arrête et c'est à vous.</li>
-      <li>Pour jouer : touchez une carte, puis l'endroit où la poser (en vert). Touchez deux fois une carte pour l'envoyer sur les as.</li>
+      <li>Pour jouer : touchez une carte, puis l'endroit où la poser (en vert). Touchez deux fois une carte pour l'envoyer sur les as ou les atouts.</li>
     </ul>
     <div><button class="btn" id="btnRulesClose" type="button">Fermer</button></div>
   </section>
@@ -142,23 +149,28 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 (function(){
 "use strict";
 // ---------- cards ----------
-const SUITS=["♠","♥","♦","♣"], RANKS=["A","2","3","4","5","6","7","8","9","10","V","D","R"];
-const suit=c=>Math.floor((c%52)/13), rank=c=>(c%13)+1, deck=c=>Math.floor(c/52), red=c=>{const s=suit(c);return s===1||s===2};
-const nameOf=c=>RANKS[rank(c)-1]+SUITS[suit(c)];
+// One tarot deck of 78 cards shared by both players: k<56 suit cards (14 per suit: A..10, V, C, D, R), 56..76 atouts 1..21, 77 the Excuse (value 0).
+const N=78, SUITS=["♠","♥","♦","♣"], RANKS=["A","2","3","4","5","6","7","8","9","10","V","C","D","R"];
+const isTrump=c=>(c%N)>=56;
+const suit=c=>isTrump(c)?4:Math.floor((c%N)/14);
+const rank=c=>{const k=c%N; return k>=56 ? (k===77?0:k-55) : (k%14)+1};
+const red=c=>{const s=suit(c);return s===1||s===2};
+const nameOf=c=>isTrump(c)?(rank(c)===0?"l'Excuse":"l'atout "+rank(c)):RANKS[rank(c)-1]+SUITS[suit(c)];
 const top=a=>a.length?a[a.length-1]:null;
 const clone=o=>JSON.parse(JSON.stringify(o));
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 
 function newGame(names){
-  const st={v:1,seq:0,turn:0,flipped:null,fault:null,winner:null,msg:"",names:names||["Joueur 1","Joueur 2"],
-    players:[],tab:[[],[],[],[],[],[],[],[]],fond:[[],[],[],[],[],[],[],[]]};
+  const st={v:3,seq:0,turn:0,flipped:null,fault:null,winner:null,msg:"",names:names||["Joueur 1","Joueur 2"],
+    players:[],tab:[[],[],[],[],[],[],[],[]],fond:[[],[],[],[]],atout:[[]]};
+  const all=shuffle(Array.from({length:N},(_,i)=>i));
   for(let p=0;p<2;p++){
-    const d=shuffle(Array.from({length:52},(_,i)=>p*52+i));
+    const d=all.splice(0,N/2); // 39 cards each: 13 crapette, 4 columns, 22 talon
     const crap=d.splice(0,13);
-    for(let k=0;k<4;k++) st.tab[p*4+k].push(d.pop());
+    for(let k=0;k<4;k++){ const i=d.findIndex(c=>!isTrump(c)); st.tab[p*4+k].push(d.splice(i,1)[0]) } // columns start with suit cards
     st.players.push({crap,talon:d,def:[]});
   }
-  const a=rank(top(st.players[0].crap)), b=rank(top(st.players[1].crap));
+  const pw=c=>isTrump(c)?0:rank(c), a=pw(top(st.players[0].crap)), b=pw(top(st.players[1].crap));
   st.turn = b>a ? 1 : 0;
   st.msg = st.names[st.turn]+" commence (carte de crapette la plus forte).";
   return st;
@@ -166,7 +178,7 @@ function newGame(names){
 
 // ---------- rules ----------
 // sources: "c" my crapette, "x" flipped talon card, "t0".."t7"
-// destinations: "f0".."f7", "t0".."t7", "oc" opponent crapette, "od" opponent discard, "md" my discard (flipped only)
+// destinations: "f0".."f7" aces, "a0" atout column (Excuse first, then 1..21), "t0".."t7", "oc" opponent crapette, "od" opponent discard, "md" my discard (flipped only)
 function srcCard(st,s){
   const P=st.players[st.turn];
   if(s==="c") return top(P.crap);
@@ -176,16 +188,18 @@ function srcCard(st,s){
 }
 function fits(st,card,d,s){
   const O=st.players[1-st.turn];
-  if(d[0]==="f"){const p=st.fond[+d.slice(1)],t=top(p); return t===null? rank(card)===1 : (suit(t)===suit(card)&&rank(card)===rank(t)+1)}
-  if(d[0]==="t"){ if(d===s) return false; const t=top(st.tab[+d.slice(1)]); return t===null || (red(t)!==red(card)&&rank(card)===rank(t)-1)}
+  if(d[0]==="f"){ const i=+d.slice(1); if(suit(card)!==i) return false; const t=top(st.fond[i]); return t===null? rank(card)===1 : rank(card)===rank(t)+1}
+  if(d[0]==="a"){ if(!isTrump(card)) return false; const t=top(st.atout[+d.slice(1)]); return t===null? rank(card)===0 : rank(card)===rank(t)+1}
+  if(d[0]==="t"){ if(d===s||isTrump(card)) return false; const t=top(st.tab[+d.slice(1)]); return t===null || (red(t)!==red(card)&&rank(card)===rank(t)-1)}
   if(d==="oc"||d==="od"){const t=top(d==="oc"?O.crap:O.def); return t!==null&&suit(t)===suit(card)&&Math.abs(rank(t)-rank(card))===1}
   if(d==="md") return s==="x";
   return false;
 }
-const ALLD=["f0","f1","f2","f3","f4","f5","f6","f7","t0","t1","t2","t3","t4","t5","t6","t7","oc","od","md"];
+const ALLD=["a0","f0","f1","f2","f3","t0","t1","t2","t3","t4","t5","t6","t7","oc","od","md"];
 function dests(st,s){const c=srcCard(st,s); if(c===null) return []; return ALLD.filter(d=>fits(st,c,d,s))}
 const SRCS=["c","x","t0","t1","t2","t3","t4","t5","t6","t7"];
-function foundationAvailable(st){return SRCS.some(s=>dests(st,s).some(d=>d[0]==="f"))}
+const UP=d=>d[0]==="f"||d[0]==="a";
+function foundationAvailable(st){return SRCS.some(s=>dests(st,s).some(UP))}
 function crapPlayable(st){return dests(st,"c").length>0}
 function hasWon(st,p){const P=st.players[p];return !P.crap.length&&!P.talon.length&&!P.def.length&&!(st.turn===p&&st.flipped!==null)}
 
@@ -194,7 +208,7 @@ function noteFault(st,msg){ if(!st.fault) st.fault={by:st.turn,msg} }
 function doMove(st0,s,d){
   if(!fits(st0,srcCard(st0,s),d,s)) return null;
   const st=clone(st0), me=st.turn, P=st.players[me], O=st.players[1-me];
-  if(d[0]!=="f" && foundationAvailable(st0)) noteFault(st,"une carte pouvait monter sur les as");
+  if(!UP(d) && foundationAvailable(st0)) noteFault(st,"une carte pouvait monter sur les as ou les atouts");
   if(s==="x" && crapPlayable(st0)) noteFault(st,"la carte de la crapette devait être jouée avant le talon");
   let card;
   if(s==="c") card=P.crap.pop(); else if(s==="x"){card=st.flipped; st.flipped=null} else card=st.tab[+s.slice(1)].pop();
@@ -204,10 +218,11 @@ function doMove(st0,s,d){
     st.msg=who+" défausse "+nameOf(card)+". À "+st.names[st.turn]+" de jouer.";
   } else {
     if(d[0]==="f") st.fond[+d.slice(1)].push(card);
+    else if(d[0]==="a") st.atout[+d.slice(1)].push(card);
     else if(d[0]==="t") st.tab[+d.slice(1)].push(card);
     else if(d==="oc") O.crap.push(card);
     else O.def.push(card);
-    st.msg = who+" pose "+nameOf(card)+(d[0]==="f"?" sur les as.":d[0]==="t"?" dans une colonne.":d==="oc"?" sur la crapette de "+st.names[1-me]+".":" sur la défausse de "+st.names[1-me]+".");
+    st.msg = who+" pose "+nameOf(card)+(d[0]==="f"?" sur les as.":d[0]==="a"?" sur les atouts.":d[0]==="t"?" dans une colonne.":d==="oc"?" sur la crapette de "+st.names[1-me]+".":" sur la défausse de "+st.names[1-me]+".");
   }
   if(hasWon(st,me)){st.winner=me; st.msg=who+" a gagné la partie !"}
   st.seq++; return st;
@@ -216,7 +231,7 @@ function doFlip(st0){
   if(st0.flipped!==null) return null;
   const st=clone(st0), P=st.players[st.turn];
   if(!P.talon.length){ if(!P.def.length) return null; P.talon=P.def.reverse(); P.def=[]; }
-  if(foundationAvailable(st0)) noteFault(st,"une carte pouvait monter sur les as");
+  if(foundationAvailable(st0)) noteFault(st,"une carte pouvait monter sur les as ou les atouts");
   else if(crapPlayable(st0)) noteFault(st,"la carte de la crapette devait être jouée avant le talon");
   st.flipped=P.talon.pop(); st.msg=st.names[st.turn]+" retourne "+nameOf(st.flipped)+".";
   st.seq++; return st;
@@ -239,7 +254,7 @@ const ls={get(k){try{return JSON.parse(localStorage.getItem(LS+k))}catch(e){retu
 let mode=ls.get(".mode")||"local", seat=ls.get(".seat"), state=null, sel=null;
 let db=null, gameRef=null, dbReady=false, onlineState=null, unsub=null, writing=false;
 let localState=ls.get(".game");
-if(!localState||localState.v!==1) {localState=newGame(); ls.set(".game",localState)}
+if(!localState||localState.v!==3) {localState=newGame(); ls.set(".game",localState)}
 state = localState;
 
 const $=id=>document.getElementById(id);
@@ -257,19 +272,25 @@ function commit(ns){
 }
 
 // ---------- rendering ----------
-function cardEl(c,faceUp){
+function cardEl(c,faceUp,owner){
   const el=document.createElement("div");
   if(c===null) return el;
-  if(!faceUp){el.className="card back"+(deck(c)?" d1":""); return el}
+  if(!faceUp){el.className="card back"+(owner?" d1":""); return el}
+  if(isTrump(c)){
+    const v=rank(c), t=v===0?"★":String(v);
+    el.className="card trump"+(v===0?" excuse":"");
+    el.innerHTML='<span class="ix">'+t+'<i>'+(v===0?"":"✦")+'</i></span><span class="big">'+t+'<i>'+(v===0?"":"✦")+'</i></span>';
+    return el;
+  }
   el.className="card "+(red(c)?"red":"blk");
-  el.innerHTML='<span class="ix">'+RANKS[rank(c)-1]+'<i>'+SUITS[suit(c)]+'</i></span><span class="big">'+RANKS[rank(c)-1]+'<i>'+SUITS[suit(c)]+'</i></span><span class="deck'+(deck(c)?" d1":"")+'"></span>';
+  el.innerHTML='<span class="ix">'+RANKS[rank(c)-1]+'<i>'+SUITS[suit(c)]+'</i></span><span class="big">'+RANKS[rank(c)-1]+'<i>'+SUITS[suit(c)]+'</i></span>';
   return el;
 }
-function slot(key,cls,card,faceUp,count,label){
+function slot(key,cls,card,faceUp,count,label,owner){
   const wrap=document.createElement("div"); wrap.className="pile";
   const s=document.createElement("div"); s.className="slot "+(cls||""); s.dataset.key=key; s.tabIndex=0;
   s.setAttribute("role","button"); s.setAttribute("aria-label",label+(card!==null&&faceUp?" : "+nameOf(card):"")+(count!=null?" ("+count+")":""));
-  if(card!==null){const ce=cardEl(card,faceUp); s.appendChild(ce)}
+  if(card!==null){const ce=cardEl(card,faceUp,owner); s.appendChild(ce)}
   if(count!=null&&count>0){const n=document.createElement("span"); n.className="count"; n.textContent=count; s.appendChild(n)}
   wrap.appendChild(s);
   if(label){const l=document.createElement("span"); l.className="lbl"; l.textContent=label; wrap.appendChild(l)}
@@ -284,13 +305,13 @@ function playerBox(p,isTopRow){
   const total=P.crap.length+P.talon.length+P.def.length+(mine&&state.flipped!==null?1:0);
   info.innerHTML='<div class="pname"></div><div class="pmeta"></div>';
   info.querySelector(".pname").textContent=state.names[p];
-  info.querySelector(".pmeta").textContent=total+" cartes restantes · dos "+(p?"rouges":"bleus");
+  info.querySelector(".pmeta").textContent=total+" cartes restantes";
   const piles=document.createElement("div"); piles.className="piles";
   const own=p===me;
   const kC=own?"c":"oc", kD=own?"md":"od";
   piles.appendChild(slot(kC,"",top(P.crap),true,P.crap.length,"Crapette"));
   const talonTop=P.talon.length?P.talon[P.talon.length-1]:(P.def.length&&own&&state.flipped===null?P.def[0]:null);
-  piles.appendChild(slot(own?"talon":"-","",talonTop,false,P.talon.length,"Talon"));
+  piles.appendChild(slot(own?"talon":"-","",talonTop,false,P.talon.length,"Talon",p));
   if(own) piles.appendChild(slot("x","",state.flipped,true,null,"Retournée"));
   piles.appendChild(slot(kD,"",top(P.def),true,P.def.length,"Défausse"));
   if(isTopRow){box.appendChild(piles);box.appendChild(info)} else {box.appendChild(info);box.appendChild(piles)}
@@ -311,22 +332,29 @@ function tabEl(i,side,areaW,cw){
 
 function render(){
   const W=Math.min(document.querySelector(".wrap").clientWidth-24, 596);
-  const cw=Math.max(34,Math.min(58,Math.floor(W/8.4)));
+  const cw=Math.max(34,Math.min(60,Math.floor(W/8.6)));
   document.documentElement.style.setProperty("--cw",cw+"px");
   const vs=viewSeat();
   playerBox(1-vs,true); playerBox(vs,false);
   const board=$("board"); board.innerHTML="";
-  const areaW=(W-2*cw-18)/2;
+  const areaW=(W-cw-16)/2;
+  const left=document.createElement("div"), mid=document.createElement("div"), right=document.createElement("div");
+  left.className=right.className="side"; mid.className="centre";
   for(let r=0;r<4;r++){
     const rr= vs===0? r : 3-r;
-    const L= vs===0? rr : 4+rr, R= vs===0? 4+rr : rr;
-    const f1= vs===0? 2*rr : 2*rr+1, f2= vs===0? 2*rr+1 : 2*rr;
-    const row=document.createElement("div"); row.className="row";
-    row.appendChild(tabEl(L,"L",areaW,cw));
-    for(const f of [f1,f2]){const s=slot("f"+f,"fond",top(state.fond[f]),true,null,""); s.querySelector(".slot").setAttribute("aria-label","As "+(f+1)+(state.fond[f].length?" : "+nameOf(top(state.fond[f])):" vide")); row.appendChild(s.firstChild)}
-    row.appendChild(tabEl(R,"R",areaW,cw));
-    board.appendChild(row);
+    left.appendChild(tabEl(vs===0? rr : 4+rr,"L",areaW,cw));
+    right.appendChild(tabEl(vs===0? 4+rr : rr,"R",areaW,cw));
   }
+  // centre: one pile per suit (A → R) and one for the atouts (Excuse, 1 → 21)
+  const NAMES=["Pique","Cœur","Carreau","Trèfle"];
+  for(let f=0;f<4;f++){
+    const el=slot("f"+f,"fond"+(f===1||f===2?" redmark":""),top(state.fond[f]),true,null,"").firstChild;
+    el.dataset.mark=SUITS[f]; el.setAttribute("aria-label",NAMES[f]+(state.fond[f].length?" : "+nameOf(top(state.fond[f])):" vide"));
+    mid.appendChild(el);
+  }
+  {const pile=state.atout[0]; const el=slot("a0","fond",top(pile),true,null,"").firstChild; el.dataset.mark="★";
+   el.setAttribute("aria-label","Atouts"+(pile.length?" : "+nameOf(top(pile)):" vide")); mid.appendChild(el)}
+  board.append(left,mid,right);
   // highlights
   if(sel){
     document.querySelectorAll('[data-key="'+sel+'"]').forEach(e=>{const c=e.classList.contains("tab")?e.lastElementChild:e.querySelector(".card"); if(c) c.classList.add("sel")});
@@ -356,7 +384,7 @@ function onKey(key){
   if(key==="talon"){ sel=null; const ns=doFlip(state); if(ns) commit(ns); else render(); return }
   if(sel){
     if(key===sel){ // second tap: try the foundations
-      const f=dests(state,sel).find(d=>d[0]==="f");
+      const f=dests(state,sel).find(UP);
       if(f){commit(doMove(state,sel,f));return}
       sel=null; render(); return;
     }
@@ -419,12 +447,12 @@ async function connect(){
     const timer=setTimeout(()=>{ if(!dbReady){onlineMsg="La partie en ligne ne répond pas encore… vérifiez la connexion."; render()} },10000);
     unsub=gameRef.onSnapshot(snap=>{
       clearTimeout(timer);
-      if(!snap.exists){ // first device creates the shared game
+      if(!snap.exists||(snap.data()||{}).v!==3){ // first device creates the shared game (or replaces an older version)
         if(!dbReady){ dbReady=true; const ns=newGame(localState.names); onlineState=ns; if(mode==="online"){state=ns} gameRef.set(ns).catch(()=>{}); render(); }
         return;
       }
       const d=snap.data(); dbReady=true;
-      if(d&&d.v===1&&(!onlineState||d.seq>=onlineState.seq||!writing)){
+      if(d&&d.v===3&&(!onlineState||d.seq>=onlineState.seq||!writing)){
         onlineState=clone(d);
         if(mode==="online"){ state=onlineState; if(sel&&!canAct()) sel=null; render(); if(!$("setup").hidden) syncSetup() }
       }
