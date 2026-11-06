@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600;700&display=swap">
 <style>
-/* Layout: one-screen card table — opponent's piles on top, 4 rows of (tableau ← as as → tableau) in the middle, my piles at the bottom. Single deliberate look: a felt table. */
+/* Layout: one-screen card table — opponent's piles, their 4 columns, the 5 centre piles side by side, my 4 columns, my piles. Single deliberate look: a felt table. */
 :root{
   --felt:#1f4a3a; --felt-deep:#163829; --felt-line:#2c5e4b;
   --brass:#d7b56d; --ink:#f3efe4; --ink-soft:#b9c8bd;
@@ -39,14 +39,14 @@ h1{font-family:var(--f-display); font-weight:400; font-size:1.5rem; margin:0; le
 .pile{display:flex; flex-direction:column; align-items:center; gap:3px}
 .pile .lbl{font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft)}
 
-.board{display:grid; grid-template-columns:minmax(0,1fr) var(--cw) minmax(0,1fr); gap:8px}
-.side{display:flex; flex-direction:column; justify-content:space-around; gap:6px; min-width:0}
-.centre{display:flex; flex-direction:column; gap:6px; padding:6px; margin:-6px; border-radius:10px; background:rgba(0,0,0,.14)}
+.board{display:flex; flex-direction:column; gap:8px}
 .row{display:grid; grid-template-columns:1fr var(--cw) 1fr; gap:6px; align-items:center}
-.tab{position:relative; height:var(--ch); border-radius:6px}
-.tab::before{content:""; position:absolute; top:0; width:var(--cw); height:var(--ch); border:1px dashed var(--felt-line); border-radius:6px; box-sizing:border-box}
-.tab.L::before{right:0} .tab.R::before{left:0}
-.tab .card{position:absolute; top:0}
+.cols{display:flex; justify-content:center; gap:var(--gap)}
+.tab{position:relative; width:var(--cw); height:var(--colh); border-radius:6px; flex:none}
+.tab::before{content:""; position:absolute; left:0; width:var(--cw); height:var(--ch); border:1px dashed var(--felt-line); border-radius:6px; box-sizing:border-box}
+.tab.U::before{bottom:0} .tab.D::before{top:0}
+.tab .card{position:absolute; left:0}
+.centre{display:flex; justify-content:center; gap:var(--gap); padding:8px; border-radius:12px; background:rgba(0,0,0,.16)}
 
 .slot{position:relative; width:var(--cw); height:var(--ch); border-radius:6px; border:1px dashed var(--felt-line); box-sizing:border-box; cursor:pointer; flex:none}
 .slot.fond.redmark::after{color:#6b4a3e}
@@ -317,33 +317,33 @@ function playerBox(p,isTopRow){
   if(isTopRow){box.appendChild(piles);box.appendChild(info)} else {box.appendChild(info);box.appendChild(piles)}
 }
 
-function tabEl(i,side,areaW,cw){
+function tabEl(i,side,areaH,ch){
   const el=document.createElement("div"); el.className="tab "+side+(state.tab[i].length?"":" empty"); el.dataset.key="t"+i;
   el.tabIndex=0; el.setAttribute("role","button");
   const pile=state.tab[i], n=pile.length;
   el.setAttribute("aria-label","Colonne"+(n?" : "+pile.map(nameOf).join(", "):" vide"));
-  const step=n>1?Math.min(cw*0.42,(areaW-cw)/(n-1)):0;
-  // fan away from the aces: the top card (last) sits next to the centre
+  const step=n>1?Math.min(ch*0.3,(areaH-ch)/(n-1)):0;
+  // fan away from the centre piles: the top card (last) sits nearest the middle
   pile.forEach((c,k)=>{const ce=cardEl(c,true); ce.style.zIndex=k+1;
-    if(side==="L") ce.style.right=((n-1-k)*step)+"px"; else ce.style.left=((n-1-k)*step)+"px";
+    if(side==="U") ce.style.bottom=((n-1-k)*step)+"px"; else ce.style.top=((n-1-k)*step)+"px";
     el.appendChild(ce)});
   return el;
 }
 
 function render(){
   const W=Math.min(document.querySelector(".wrap").clientWidth-24, 596);
-  const cw=Math.max(34,Math.min(60,Math.floor(W/8.6)));
-  document.documentElement.style.setProperty("--cw",cw+"px");
+  const cw=Math.max(40,Math.min(76,Math.floor(W/5.9))), ch=Math.round(cw*1.4), gap=Math.round(cw*0.18);
+  const colH=Math.round(ch*2.1);
+  const rs=document.documentElement.style;
+  rs.setProperty("--cw",cw+"px"); rs.setProperty("--gap",gap+"px"); rs.setProperty("--colh",colH+"px");
   const vs=viewSeat();
   playerBox(1-vs,true); playerBox(vs,false);
   const board=$("board"); board.innerHTML="";
-  const areaW=(W-cw-16)/2;
-  const left=document.createElement("div"), mid=document.createElement("div"), right=document.createElement("div");
-  left.className=right.className="side"; mid.className="centre";
-  for(let r=0;r<4;r++){
-    const rr= vs===0? r : 3-r;
-    left.appendChild(tabEl(vs===0? rr : 4+rr,"L",areaW,cw));
-    right.appendChild(tabEl(vs===0? 4+rr : rr,"R",areaW,cw));
+  const up=document.createElement("div"), mid=document.createElement("div"), down=document.createElement("div");
+  up.className=down.className="cols"; mid.className="centre";
+  for(let k=0;k<4;k++){
+    up.appendChild(tabEl((1-vs)*4+k,"U",colH,ch));   // opponent's columns, above the centre
+    down.appendChild(tabEl(vs*4+k,"D",colH,ch));     // my columns, below the centre
   }
   // centre: one pile per suit (A → R) and one for the atouts (Excuse, 1 → 21)
   const NAMES=["Pique","Cœur","Carreau","Trèfle"];
@@ -354,7 +354,7 @@ function render(){
   }
   {const pile=state.atout[0]; const el=slot("a0","fond",top(pile),true,null,"").firstChild; el.dataset.mark="★";
    el.setAttribute("aria-label","Atouts"+(pile.length?" : "+nameOf(top(pile)):" vide")); mid.appendChild(el)}
-  board.append(left,mid,right);
+  board.append(up,mid,down);
   // highlights
   if(sel){
     document.querySelectorAll('[data-key="'+sel+'"]').forEach(e=>{const c=e.classList.contains("tab")?e.lastElementChild:e.querySelector(".card"); if(c) c.classList.add("sel")});
