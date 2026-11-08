@@ -4,8 +4,10 @@
 
 | Fichier | Rôle |
 |---|---|
-| `porte-manteau.stl` | prêt à ouvrir dans le trancheur |
+| `porte-manteau.3mf` | projet PrusaSlicer : pièce déjà orientée, avec les réglages conseillés posés sur l'objet |
+| `porte-manteau.stl` | prêt à ouvrir dans n'importe quel trancheur |
 | `porte-manteau.scad` | modèle paramétrique OpenSCAD (modifie les cotes en haut du fichier) |
+| `generer_3mf.py` | recrée le `.3mf` à partir du STL |
 | `generer_stl.py` | régénère le STL sans OpenSCAD (`pip install manifold3d trimesh`) |
 
 ## Dimensions
