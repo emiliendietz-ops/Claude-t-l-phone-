@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Fléchettes</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fléchettes">
+<meta name="theme-color" content="#14181d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#14181d; --panel:#1d232a; --panel-2:#262e37; --line:#33404c;
+  --ink:#f2efe8; --ink-soft:#9aa7b3; --red:#d8423a; --green:#2f9e5b; --cream:#efe3c4;
+  --accent:#f2c14e; --bad:#ff7a6b;
+  --r:14px;
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.3 var(--f);
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+input{font:inherit}
+[hidden]{display:none!important}
+h1,h2,h3{margin:0;font-weight:700}
+
+/* ---------- Setup ---------- */
+#setup{max-width:760px;margin:0 auto;padding:24px 16px 40px}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.brand svg{width:52px;height:52px;flex:none}
+.brand h1{font-size:32px;letter-spacing:.5px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.card h2{font-size:15px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-soft);margin-bottom:12px}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-size:18px;font-weight:600;min-width:84px}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#1b1b1b}
+.row{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.row > span{color:var(--ink-soft);min-width:120px}
+.players{display:flex;flex-direction:column;gap:8px}
+.pl{display:flex;gap:8px;align-items:center}
+.pl input{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-size:18px;-webkit-user-select:text;user-select:text}
+.pl input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.icon-btn{width:48px;height:48px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);font-size:22px;flex:none}
+.add{margin-top:10px;background:transparent;border:1px dashed var(--line);border-radius:10px;padding:12px;width:100%;color:var(--ink-soft);font-size:17px}
+.go{width:100%;padding:18px;border-radius:var(--r);background:var(--green);font-size:22px;font-weight:700;margin-top:4px}
+.go:active{filter:brightness(.9)}
+.resume{width:100%;padding:14px;border-radius:var(--r);background:var(--panel-2);border:1px solid var(--line);font-size:18px;margin-bottom:16px}
+
+/* ---------- Game ---------- */
+#game{height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,46%);gap:14px;padding:14px}
+.left{display:flex;flex-direction:column;gap:12px;min-height:0}
+.topbar{display:flex;align-items:center;gap:10px}
+.topbar .title{flex:1;font-weight:700;font-size:18px;color:var(--ink-soft)}
+.topbar button{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:15px}
+.board{flex:1;min-height:0;overflow:auto;display:grid;gap:10px;align-content:start}
+
+/* x01 player cards */
+.pc{background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:12px 16px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px}
+.pc.cur{border-color:var(--accent);background:#262a22}
+.pc .nm{font-size:20px;font-weight:700;display:flex;gap:8px;align-items:center;min-width:0}
+.pc .nm b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc .legs{font-size:13px;background:var(--panel-2);border-radius:20px;padding:2px 9px;color:var(--ink-soft);font-weight:600;flex:none}
+.pc .sc{grid-row:span 2;font-size:64px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.pc.cur .sc{color:var(--accent)}
+.pc .st{font-size:14px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.pc .co{grid-column:1/-1;font-size:15px;color:var(--cream);min-height:0}
+.pc .co:empty{display:none}
+
+/* current turn strip */
+.turn{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;align-items:center;gap:10px}
+.turn .who{font-weight:700;font-size:18px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dart{width:78px;height:54px;border-radius:10px;background:var(--panel-2);border:1px dashed var(--line);display:grid;place-items:center;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.dart.f{border-style:solid;border-color:#4a5866}
+.turn .tot{min-width:64px;text-align:right;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+
+/* cricket table */
+.ck{width:100%;border-collapse:separate;border-spacing:0 6px;font-variant-numeric:tabular-nums}
+.ck th{font-size:17px;padding:6px 4px;color:var(--ink-soft);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+.ck th.cur{color:var(--accent)}
+.ck td{background:var(--panel);text-align:center;height:52px;font-size:24px}
+.ck td.num{background:var(--panel-2);font-weight:800;width:72px;font-size:24px}
+.ck td.num.dead{color:#56636f;text-decoration:line-through}
+.ck td:first-child{border-radius:10px 0 0 10px}
+.ck td:last-child{border-radius:0 10px 10px 0}
+.ck td.cur{background:#262a22}
+.ck tr.pts td{font-size:26px;font-weight:800;background:transparent}
+.ck tr.pts td.cur{color:var(--accent)}
+.mk{display:inline-block;width:34px;height:34px;vertical-align:middle}
+
+/* keypad */
+.right{display:flex;flex-direction:column;gap:10px;min-height:0}
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mods button{padding:16px;border-radius:12px;font-size:20px;font-weight:700;background:var(--panel-2);border:2px solid var(--line)}
+.mods button.on[data-m="2"]{background:var(--green);border-color:var(--green)}
+.mods button.on[data-m="3"]{background:var(--red);border-color:var(--red)}
+.pad{flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:8px;min-height:0}
+.pad button{background:var(--panel);border:1px solid var(--line);border-radius:12px;font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;min-height:52px}
+.pad button:active,.mods button:active,.acts button:active{filter:brightness(1.35)}
+.pad button.dim{opacity:.35}
+.pad button.wide{grid-column:span 2;font-size:22px}
+.pad button.miss{color:var(--ink-soft)}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acts button{padding:16px;border-radius:12px;font-size:18px;font-weight:700;background:var(--panel-2);border:1px solid var(--line)}
+.acts button.ok{background:var(--green);border-color:var(--green)}
+.acts button:disabled{opacity:.4}
+
+/* total-entry keypad */
+.tpad{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px;min-height:0}
+.tpad button{background:var(--panel);border:1px solid var(--line);border-radius:12px;font-size:32px;font-weight:700;min-height:56px}
+.tpad button:active{filter:brightness(1.35)}
+.tdisp{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:44px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;min-height:72px}
+.tdisp.err{color:var(--bad)}
+.modesw{display:flex;gap:8px}
+.modesw button{flex:1;padding:10px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:15px;color:var(--ink-soft)}
+.modesw button.on{background:var(--panel-2);color:var(--ink);border-color:var(--ink-soft)}
+
+/* toast + overlay */
+.toast{position:fixed;left:50%;top:22%;transform:translate(-50%,-50%) scale(.9);background:var(--red);color:#fff;font-size:44px;font-weight:800;padding:18px 40px;border-radius:18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:20;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.toast.good{background:var(--green)}
+.ov{position:fixed;inset:0;background:rgba(8,10,12,.78);display:grid;place-items:center;z-index:30;padding:16px}
+.ov .box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px;width:min(560px,100%);text-align:center}
+.ov h2{font-size:34px;margin-bottom:6px}
+.ov p{color:var(--ink-soft);margin:0 0 18px}
+.ov table{width:100%;border-collapse:collapse;margin-bottom:20px;font-variant-numeric:tabular-nums}
+.ov td,.ov th{padding:8px;border-bottom:1px solid var(--line);text-align:right}
+.ov td:first-child,.ov th:first-child{text-align:left}
+.ov th{color:var(--ink-soft);font-weight:600;font-size:14px}
+.ov .btns{display:grid;gap:10px}
+.ov .btns button{padding:16px;border-radius:12px;font-size:19px;font-weight:700;background:var(--panel-2);border:1px solid var(--line)}
+.ov .btns button.ok{background:var(--green);border-color:var(--green)}
+
+@media (orientation:portrait), (max-width:820px){
+  #game{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;height:100%}
+  .right{min-height:52vh}
+  .pc .sc{font-size:52px}
+}
+@media (max-width:520px){
+  .pad button{font-size:22px}
+  .dart{width:60px}
+  .pc .sc{font-size:42px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<section id="setup">
+  <div class="brand">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="48" fill="#1b1b1b"/>
+      <circle cx="50" cy="50" r="40" fill="#d8423a"/>
+      <circle cx="50" cy="50" r="34" fill="#efe3c4"/>
+      <circle cx="50" cy="50" r="24" fill="#2f9e5b"/>
+      <circle cx="50" cy="50" r="18" fill="#1b1b1b"/>
+      <circle cx="50" cy="50" r="8" fill="#2f9e5b"/>
+      <circle cx="50" cy="50" r="3.5" fill="#d8423a"/>
+    </svg>
+    <h1>Fléchettes</h1>
+  </div>
+
+  <button class="resume" id="resumeBtn" hidden>Reprendre la partie en cours</button>
+
+  <div class="card">
+    <h2>Jeu</h2>
+    <div class="seg" id="gameSeg">
+      <button data-v="301">301</button>
+      <button data-v="501">501</button>
+      <button data-v="701">701</button>
+      <button data-v="cricket">Cricket</button>
+    </div>
+    <div class="row" id="outRow">
+      <span>Fin de partie</span>
+      <div class="seg" id="outSeg">
+        <button data-v="double">Double out</button>
+        <button data-v="simple">Simple</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Joueurs</h2>
+    <div class="players" id="players"></div>
+    <button class="add" id="addPlayer">+ Ajouter un joueur</button>
+  </div>
+
+  <button class="go" id="startBtn">Commencer</button>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="game" hidden>
+  <div class="left">
+    <div class="topbar">
+      <div class="title" id="gameTitle"></div>
+      <button id="menuBtn">Menu</button>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="turn">
+      <div class="who" id="turnWho"></div>
+      <div class="dart" id="d0"></div>
+      <div class="dart" id="d1"></div>
+      <div class="dart" id="d2"></div>
+      <div class="tot" id="turnTot"></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="modesw" id="modeSw">
+      <button data-v="darts">Fléchette par fléchette</button>
+      <button data-v="total">Total du tour</button>
+    </div>
+    <div id="dartsInput" class="right" style="flex:1">
+      <div class="mods">
+        <button data-m="2">Double</button>
+        <button data-m="3">Triple</button>
+      </div>
+      <div class="pad" id="pad"></div>
+    </div>
+    <div id="totalInput" class="right" style="flex:1" hidden>
+      <div class="tdisp" id="tdisp">0</div>
+      <div class="tpad" id="tpad"></div>
+    </div>
+    <div class="acts">
+      <button id="undoBtn">↶ Annuler</button>
+      <button id="nextBtn" class="ok">Tour suivant →</button>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+<div class="ov" id="ov" hidden><div class="box" id="ovBox"></div></div>
+
+<script>
+"use strict";
+/* ================= Storage (best effort) ================= */
+const store = {
+  get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ================= Setup ================= */
+const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"] }, store.get("darts-setup") || {});
+
+function renderSetup(){
+  document.querySelectorAll("#gameSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.game));
+  document.querySelectorAll("#outSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.out));
+  $("outRow").hidden = setup.game === "cricket";
+  const box = $("players");
+  box.innerHTML = "";
+  setup.players.forEach((name, i) => {
+    const d = document.createElement("div");
+    d.className = "pl";
+    d.innerHTML = `<input value="${esc(name)}" maxlength="18" autocomplete="off" autocapitalize="words">
+      <button class="icon-btn" data-a="up" title="Monter">↑</button>
+      <button class="icon-btn" data-a="del" title="Retirer">×</button>`;
+    d.querySelector("input").addEventListener("input", e => { setup.players[i] = e.target.value; store.set("darts-setup", setup); });
+    d.querySelector('[data-a="up"]').onclick = () => { if(i>0){ [setup.players[i-1], setup.players[i]] = [setup.players[i], setup.players[i-1]]; renderSetup(); } };
+    d.querySelector('[data-a="del"]').onclick = () => { if(setup.players.length>1){ setup.players.splice(i,1); renderSetup(); } };
+    d.querySelector('[data-a="up"]').style.visibility = i ? "visible" : "hidden";
+    box.appendChild(d);
+  });
+  $("addPlayer").hidden = setup.players.length >= 8;
+  $("resumeBtn").hidden = !store.get("darts-game");
+  store.set("darts-setup", setup);
+}
+$("gameSeg").onclick = e => { if(e.target.dataset.v){ setup.game = e.target.dataset.v; renderSetup(); } };
+$("outSeg").onclick = e => { if(e.target.dataset.v){ setup.out = e.target.dataset.v; renderSetup(); } };
+$("addPlayer").onclick = () => { setup.players.push("Joueur " + (setup.players.length+1)); renderSetup(); };
+$("startBtn").onclick = () => {
+  const names = setup.players.map((n,i) => n.trim() || ("Joueur "+(i+1)));
+  newGame(setup.game, setup.out, names);
+};
+$("resumeBtn").onclick = () => { const g = store.get("darts-game"); if(g){ G = g; history = []; showGame(); } };
+
+/* ================= Game state ================= */
+const CK = [20,19,18,17,16,15,25];
+let G = null;          // current game
+let history = [];      // undo stack of JSON snapshots
+let mult = 1;          // pending multiplier for next dart
+let inputMode = store.get("darts-input") || "darts";
+let totalBuf = "";
+let pending = null;     // delayed action (end of turn after bust / 3rd dart)
+function later(f, ms){ cancelPending(); pending = {f, t:setTimeout(() => { pending = null; f(); }, ms)}; }
+function cancelPending(){ if(pending){ clearTimeout(pending.t); pending = null; } }
+function flush(){ if(pending){ const f = pending.f; cancelPending(); f(); return true; } return false; }
+
+function newGame(type, out, names, legs, starter){
+  G = {
+    type, out,
+    start: type === "cricket" ? 0 : +type,
+    players: names.map((name,i) => ({
+      name, legs: legs ? legs[i] : 0,
+      score: type === "cricket" ? 0 : +type,
+      marks: {15:0,16:0,17:0,18:0,19:0,20:0,25:0},
+      darts: 0, points: 0,       // for averages
+      first9: [],                // points from first 3 turns (x01)
+      best: 0
+    })),
+    starter: starter || 0,
+    cur: starter || 0,
+    turn: [],                    // darts of current turn [{n,m}]
+    turnStart: null,             // x01 score at start of turn
+    round: 1,
+    winner: null
+  };
+  G.turnStart = G.players[G.cur].score;
+  history = [];
+  mult = 1;
+  totalBuf = "";
+  save();
+  showGame();
+}
+function save(){ if(G && G.winner === null) store.set("darts-game", G); else store.del("darts-game"); }
+function snap(){ history.push(JSON.stringify(G)); if(history.length > 300) history.shift(); }
+
+/* ================= Rules ================= */
+const val = d => d.n * d.m;
+const lbl = d => d.n === 0 ? "Raté" : d.n === 25 ? (d.m === 2 ? "Bull" : "25") : (d.m === 3 ? "T" : d.m === 2 ? "D" : "") + d.n;
+
+function throwDart(n, m){
+  if(!G || pending || G.winner !== null || G.turn.length >= 3) return;
+  if(n === 25 && m === 3) m = 2;
+  if(n === 0) m = 1;
+  snap();
+  const p = G.players[G.cur];
+  const d = {n, m};
+  G.turn.push(d);
+  p.darts++;
+  mult = 1;
+
+  if(G.type === "cricket"){
+    applyCricket(p, d);
+    if(checkCricketWin()) return finishLeg();
+  } else {
+    const v = val(d);
+    const left = p.score - v;
+    const dbl = G.out === "double";
+    const bust = left < 0 || (dbl && left === 1) || (dbl && left === 0 && m !== 2);
+    if(bust){
+      p.points -= (G.turnStart - p.score);   // cancel this turn's points
+      p.score = G.turnStart;
+      p.darts += 3 - G.turn.length;
+      render();
+      toast("Bust !");
+      return later(() => endTurn(true), 900);
+    }
+    p.score = left;
+    p.points += v;
+    if(left === 0){ p.best = Math.max(p.best, G.turnStart); G.winner = G.cur; return finishLeg(); }
+  }
+  render();
+  save();
+  if(G.turn.length === 3) later(() => endTurn(), 700);
+}
+
+function applyCricket(p, d){
+  if(!CK.includes(d.n)) return;
+  const before = p.marks[d.n];
+  const total = before + d.m;
+  p.marks[d.n] = Math.min(3, total);
+  const extra = total - Math.max(3, before);
+  if(extra > 0 && G.players.some(o => o !== p && o.marks[d.n] < 3)){
+    p.score += extra * d.n;
+  }
+  p.points += d.m;  // marks, for the marks-per-round stat
+}
+function checkCricketWin(){
+  const p = G.players[G.cur];
+  const allClosed = CK.every(n => p.marks[n] >= 3);
+  if(allClosed && G.players.every(o => o.score <= p.score)){ G.winner = G.cur; return true; }
+  return false;
+}
+
+function endTurn(fromBust){
+  if(!G || G.winner !== null) return;
+  if(!fromBust) snap();
+  const p = G.players[G.cur];
+  if(G.type !== "cricket"){
+    const scored = G.turnStart - p.score;
+    p.best = Math.max(p.best, scored);
+    if(p.first9.length < 3) p.first9.push(scored);
+  }
+  G.turn = [];
+  G.cur = (G.cur + 1) % G.players.length;
+  if(G.cur === G.starter) G.round++;
+  G.turnStart = G.players[G.cur].score;
+  mult = 1;
+  totalBuf = "";
+  save();
+  render();
+}
+
+function finishLeg(){
+  const w = G.players[G.winner];
+  w.legs++;
+  store.del("darts-game");
+  render();
+  toast(G.type === "cricket" ? "Gagné !" : "Check-out !", true);
+  setTimeout(showEnd, 900);
+}
+
+/* total-of-turn entry (x01 only) */
+function submitTotal(){
+  if(!G || pending || G.winner !== null || G.type === "cricket") return;
+  const v = parseInt(totalBuf || "0", 10);
+  if(v > 180 || [163,166,169,172,173,175,176,178,179].includes(v)){ flashTotal(); return; }
+  snap();
+  const p = G.players[G.cur];
+  const left = p.score - v;
+  const dbl = G.out === "double";
+  p.darts += 3;
+  if(left < 0 || (dbl && left === 1) || (dbl && left === 0 && v > 170)){
+    totalBuf = ""; render(); toast("Bust !");
+    return later(() => endTurn(true), 900);
+  }
+  p.score = left;
+  p.points += v;
+  G.turn = [{n:v, m:1, total:true}];
+  if(left === 0){ p.best = Math.max(p.best, v); G.winner = G.cur; totalBuf = ""; return finishLeg(); }
+  totalBuf = "";
+  endTurn(true);
+}
+function flashTotal(){ const t = $("tdisp"); t.classList.add("err"); setTimeout(() => t.classList.remove("err"), 500); }
+
+function undo(){
+  if(!history.length) return;
+  cancelPending();
+  G = JSON.parse(history.pop());
+  mult = 1; totalBuf = "";
+  $("ov").hidden = true;
+  save();
+  render();
+}
+
+/* ================= Checkout suggestions ================= */
+const SINGLES = []; for(let i=20;i>=1;i--) SINGLES.push({n:i,m:1});
+const TRIPLES = []; for(let i=20;i>=1;i--) TRIPLES.push({n:i,m:3});
+const DOUBLES_PREF = [20,16,8,18,12,10,4,14,6,2,19,17,15,13,11,9,7,5,3,1].map(n => ({n,m:2})).concat([{n:25,m:2}]);
+const SETUP = SINGLES.concat([{n:25,m:1}], TRIPLES, [{n:25,m:2}]);
+const ALL = TRIPLES.concat(SINGLES, [{n:25,m:1},{n:25,m:2}], DOUBLES_PREF.filter(d => d.n !== 25));
+const coCache = {};
+function checkout(score, darts, dbl){
+  const key = score+"/"+darts+"/"+dbl;
+  if(key in coCache) return coCache[key];
+  let res = null;
+  const finishers = dbl ? DOUBLES_PREF : ALL;
+  const fin1 = s => finishers.find(f => val(f) === s);
+  if(score > 0){
+    if(darts >= 1){ const f = fin1(score); if(f) res = [f]; }
+    if(!res && darts >= 2){
+      for(const f of finishers){ const s = SETUP.find(x => val(x) === score - val(f)); if(s){ res = [s, f]; break; } }
+    }
+    if(!res && darts >= 3){
+      for(const a of TRIPLES.concat([{n:25,m:2},{n:25,m:1}], SINGLES)){
+        const rest = score - val(a);
+        if(rest < (dbl ? 2 : 1)) continue;
+        const r = checkout(rest, 2, dbl);
+        if(r && r.length === 2){ res = [a].concat(r); break; }
+        if(r && r.length === 1){ res = [a].concat(r); break; }
+      }
+    }
+  }
+  return coCache[key] = res;
+}
+
+/* ================= Rendering ================= */
+function showGame(){
+  $("setup").hidden = true;
+  $("game").hidden = false;
+  $("ov").hidden = true;
+  buildPad();
+  render();
+}
+function showSetup(){
+  $("game").hidden = true;
+  $("ov").hidden = true;
+  $("setup").hidden = false;
+  renderSetup();
+}
+
+function buildPad(){
+  const pad = $("pad");
+  pad.innerHTML = "";
+  for(let i=1;i<=20;i++){
+    const b = document.createElement("button");
+    b.textContent = i; b.dataset.n = i;
+    pad.appendChild(b);
+  }
+  const bull = document.createElement("button"); bull.textContent = "25 / Bull"; bull.dataset.n = 25; bull.className = "wide";
+  const miss = document.createElement("button"); miss.textContent = "Raté"; miss.dataset.n = 0; miss.className = "wide miss";
+  pad.append(bull, miss);
+  const keep = document.createElement("button"); keep.style.visibility = "hidden"; pad.appendChild(keep);
+
+  const tp = $("tpad");
+  tp.innerHTML = "";
+  ["1","2","3","4","5","6","7","8","9","⌫","0","OK"].forEach(k => {
+    const b = document.createElement("button");
+    b.textContent = k; b.dataset.k = k;
+    if(k === "OK"){ b.style.background = "var(--green)"; b.style.borderColor = "var(--green)"; }
+    tp.appendChild(b);
+  });
+}
+
+function marksSvg(n){
+  if(!n) return "";
+  const s = 'stroke="currentColor" stroke-width="4" stroke-linecap="round" fill="none"';
+  let g = `<line x1="9" y1="25" x2="25" y2="9" ${s}/>`;
+  if(n >= 2) g += `<line x1="9" y1="9" x2="25" y2="25" ${s}/>`;
+  if(n >= 3) g += `<circle cx="17" cy="17" r="14" ${s}/>`;
+  return `<svg class="mk" viewBox="0 0 34 34" style="color:${n>=3?'var(--green)':'var(--ink)'}">${g}</svg>`;
+}
+
+function render(){
+  if(!G) return;
+  const ck = G.type === "cricket";
+  $("gameTitle").textContent = (ck ? "Cricket" : G.type + (G.out === "double" ? " · double out" : " · fin simple")) + " · tour " + G.round;
+
+  const board = $("board");
+  if(ck){
+    let h = `<table class="ck"><tr><th></th>${G.players.map((p,i) => `<th class="${i===G.cur?'cur':''}">${esc(p.name)}${p.legs?` (${p.legs})`:""}</th>`).join("")}</tr>`;
+    for(const n of CK){
+      const dead = G.players.every(p => p.marks[n] >= 3);
+      h += `<tr><td class="num ${dead?'dead':''}">${n===25?"Bull":n}</td>${G.players.map((p,i) => `<td class="${i===G.cur?'cur':''}">${marksSvg(p.marks[n])}</td>`).join("")}</tr>`;
+    }
+    h += `<tr class="pts"><td></td>${G.players.map((p,i) => `<td class="${i===G.cur?'cur':''}">${p.score}</td>`).join("")}</tr></table>`;
+    h += `<div style="color:var(--ink-soft);font-size:14px;text-align:center">${G.players.map(p => esc(p.name)+" : "+(p.darts ? (p.points/p.darts*3).toFixed(1) : "0.0")+" marques/tour").join(" · ")}</div>`;
+    board.innerHTML = h;
+  } else {
+    board.innerHTML = G.players.map((p,i) => {
+      const avg = p.darts ? (p.points / p.darts * 3).toFixed(1) : "–";
+      const left = 3 - (i === G.cur ? G.turn.length : 0);
+      let co = "";
+      if(p.score <= 170 && G.winner === null){
+        const c = checkout(p.score, i === G.cur ? left : 3, G.out === "double");
+        if(c) co = "🎯 " + c.map(lbl).join(" · ");
+      }
+      return `<div class="pc ${i===G.cur?'cur':''}">
+        <div class="nm"><b>${esc(p.name)}</b>${p.legs?`<span class="legs">${p.legs} manche${p.legs>1?"s":""}</span>`:""}</div>
+        <div class="sc">${p.score}</div>
+        <div class="st">Moy. ${avg} · Fléchettes ${p.darts}</div>
+        <div class="co">${co}</div>
+      </div>`;
+    }).join("");
+  }
+  const cur = board.querySelector(".pc.cur");
+  if(cur && cur.scrollIntoView) cur.scrollIntoView({block:"nearest"});
+
+  // turn strip
+  const p = G.players[G.cur];
+  $("turnWho").textContent = p.name;
+  const isTotal = G.turn.length === 1 && G.turn[0].total;
+  for(let k=0;k<3;k++){
+    const el = $("d"+k), d = G.turn[k];
+    el.textContent = isTotal ? (k===0 ? G.turn[0].n : "") : (d ? lbl(d) : "");
+    el.classList.toggle("f", !!d);
+  }
+  if(ck){
+    $("turnTot").textContent = "";
+  } else {
+    const t = G.turnStart - p.score;
+    $("turnTot").textContent = G.turn.length ? t : "";
+  }
+
+  // input mode
+  const mode = ck ? "darts" : inputMode;
+  $("modeSw").hidden = ck;
+  document.querySelectorAll("#modeSw button").forEach(b => b.classList.toggle("on", b.dataset.v === mode));
+  $("dartsInput").hidden = mode !== "darts";
+  $("totalInput").hidden = mode !== "total";
+  $("tdisp").textContent = totalBuf || "0";
+
+  document.querySelectorAll(".mods button").forEach(b => b.classList.toggle("on", +b.dataset.m === mult));
+  document.querySelectorAll("#pad button[data-n]").forEach(b => {
+    const n = +b.dataset.n;
+    let dim = ck && n !== 0 && !CK.includes(n);
+    if(n === 25 && mult === 3) dim = true;
+    b.classList.toggle("dim", dim);
+    if(n === 25) b.textContent = mult === 2 ? "Bull (50)" : mult === 3 ? "—" : "25 / Bull";
+  });
+  $("undoBtn").disabled = !history.length;
+  $("nextBtn").textContent = G.turn.length === 0 ? "Passer le tour →" : "Tour suivant →";
+  $("nextBtn").hidden = mode === "total";
+}
+
+function showEnd(){
+  if(!G || G.winner === null) return;
+  const w = G.players[G.winner];
+  const ck = G.type === "cricket";
+  const rows = G.players.map(p => {
+    const avg = p.darts ? (p.points/p.darts*3).toFixed(1) : "–";
+    const f9 = p.first9.length ? (p.first9.reduce((a,b)=>a+b,0)/p.first9.length).toFixed(1) : "–";
+    return ck
+      ? `<tr><td>${esc(p.name)}</td><td>${p.score}</td><td>${avg}</td><td>${p.legs}</td></tr>`
+      : `<tr><td>${esc(p.name)}</td><td>${p.score}</td><td>${avg}</td><td>${f9}</td><td>${p.darts}</td><td>${p.legs}</td></tr>`;
+  }).join("");
+  const head = ck ? `<tr><th>Joueur</th><th>Points</th><th>Marques/tour</th><th>Manches</th></tr>`
+                  : `<tr><th>Joueur</th><th>Reste</th><th>Moyenne</th><th>9 prem.</th><th>Fléch.</th><th>Manches</th></tr>`;
+  $("ovBox").innerHTML = `<h2>🏆 ${esc(w.name)}</h2>
+    <p>${ck ? "remporte la manche de Cricket" : "termine en " + w.darts + " fléchettes"}</p>
+    <table>${head}${rows}</table>
+    <div class="btns">
+      <button class="ok" id="againBtn">Manche suivante</button>
+      <button id="undoEndBtn">↶ Annuler la dernière fléchette</button>
+      <button id="newBtn">Nouvelle partie</button>
+    </div>`;
+  $("ov").hidden = false;
+  $("againBtn").onclick = () => {
+    const n = G.players.length;
+    newGame(G.type, G.out, G.players.map(p => p.name), G.players.map(p => p.legs), (G.starter + 1) % n);
+  };
+  $("undoEndBtn").onclick = undo;
+  $("newBtn").onclick = () => { G = null; showSetup(); };
+}
+
+function showMenu(){
+  $("ovBox").innerHTML = `<h2>Menu</h2><p>La partie est enregistrée automatiquement.</p>
+    <div class="btns">
+      <button class="ok" id="mClose">Continuer</button>
+      <button id="mRestart">Recommencer la manche</button>
+      <button id="mQuit">Quitter vers l'accueil</button>
+    </div>`;
+  $("ov").hidden = false;
+  $("mClose").onclick = () => { $("ov").hidden = true; };
+  $("mRestart").onclick = () => { if(confirm("Recommencer cette manche ?")) newGame(G.type, G.out, G.players.map(p => p.name), G.players.map(p => p.legs), G.starter); };
+  $("mQuit").onclick = () => { save(); G = null; showSetup(); };
+}
+
+let toastT;
+function toast(msg, good){
+  const t = $("toast");
+  t.textContent = msg; t.classList.toggle("good", !!good); t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1000);
+}
+
+/* ================= Events ================= */
+$("pad").addEventListener("click", e => {
+  const b = e.target.closest("button[data-n]"); if(!b || b.classList.contains("dim")) return;
+  throwDart(+b.dataset.n, mult);
+});
+document.querySelector(".mods").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  mult = mult === +b.dataset.m ? 1 : +b.dataset.m;
+  render();
+});
+$("tpad").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  const k = b.dataset.k;
+  if(k === "OK") return submitTotal();
+  if(k === "⌫") totalBuf = totalBuf.slice(0,-1);
+  else if(totalBuf.length < 3) totalBuf = (totalBuf + k).replace(/^0+(?=\d)/, "");
+  $("tdisp").textContent = totalBuf || "0";
+});
+$("modeSw").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  if(G && G.turn.length && b.dataset.v === "total") return toast("Finis le tour d'abord");
+  inputMode = b.dataset.v; store.set("darts-input", inputMode); totalBuf = ""; render();
+});
+$("undoBtn").onclick = undo;
+$("nextBtn").onclick = () => {
+  if(!G || G.winner !== null || flush()) return;
+  snap();
+  G.players[G.cur].darts += 3 - G.turn.length;   // darts not entered count as missed
+  endTurn(true);
+};
+$("menuBtn").onclick = showMenu;
+
+/* keyboard (handy with an iPad keyboard) */
+document.addEventListener("keydown", e => {
+  if($("game").hidden || e.target.tagName === "INPUT") return;
+  if(e.key === "d" || e.key === "D"){ mult = mult === 2 ? 1 : 2; render(); }
+  else if(e.key === "t" || e.key === "T"){ mult = mult === 3 ? 1 : 3; render(); }
+  else if(e.key === "Backspace" && (e.metaKey || e.ctrlKey)) undo();
+  else if(e.key === "Enter" && inputMode !== "total") $("nextBtn").click();
+});
+
+/* boot */
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(function(){}); }
+renderSetup();
+</script>
+</body>
+</html>
