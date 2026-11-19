@@ -43,6 +43,17 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
 .hbtn{width:48px;height:48px;display:grid;place-items:center;border-radius:12px;color:var(--ink-soft)}
 .hbtn:active{background:var(--panel-2)}
 .hbtn svg{width:30px;height:30px}
+.camind{position:relative}
+.camind i{position:absolute;right:7px;bottom:8px;width:11px;height:11px;border-radius:50%;background:var(--ink-faint);border:2px solid var(--bg)}
+.camind.ok i{background:#2fbf71} .camind.warn i{background:#e2a52b} .camind.pause{opacity:.45}
+#board .mark{fill:#fff;stroke:#000;stroke-width:2.5;pointer-events:none}
+#board .mark.cam{fill:#00e5ff}
+.hint{color:var(--ink-soft);font-size:15px;margin-top:12px;line-height:1.45}
+.hint b{color:var(--ink)}
+.codebox{font-size:30px;font-weight:800;letter-spacing:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:8px 18px;font-variant-numeric:tabular-nums}
+.camstat{display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:600}
+.camstat i{width:11px;height:11px;border-radius:50%;background:var(--ink-faint)}
+.camstat.ok i{background:#2fbf71} .camstat.warn i{background:#e2a52b}
 
 /* ---------- Game layout ---------- */
 #game{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -213,12 +224,14 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
   <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
   <symbol id="i-reset" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 11-2.34-5.66"/><path d="M20 4v5h-5"/></g></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></g></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3"/></g></symbol>
   <symbol id="i-next" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></g></symbol>
 </svg>
 
 <header>
   <div class="logo"><svg><use href="#i-dart"/></svg><span>Darts Score</span></div>
   <div class="mode" id="modeTxt"></div>
+  <button class="hbtn camind" id="camBtn" title="Caméras (toucher pour mettre en pause)" hidden><svg><use href="#i-cam"/></svg><i></i></button>
   <button class="hbtn" id="gearBtn" title="Réglages"><svg><use href="#i-gear"/></svg></button>
   <button class="hbtn" id="fullBtn" title="Plein écran"><svg><use href="#i-full"/></svg></button>
 </header>
@@ -247,6 +260,19 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
       <h2>Joueurs</h2>
       <div class="players" id="players"></div>
       <button class="add" id="addPlayer">+ Ajouter un joueur</button>
+    </div>
+    <div class="card">
+      <h2>Comptage automatique (caméras)</h2>
+      <div class="seg" id="autoSeg">
+        <button data-v="off">Désactivé</button>
+        <button data-v="on">Activé</button>
+      </div>
+      <div id="autoBox">
+        <div class="row"><span>Code de la cible</span><div class="codebox" id="codeBox"></div><button class="icon-btn" id="newCode" title="Nouveau code">↻</button></div>
+        <div class="camstat" id="camStat"><i></i><span>Recherche du PC des caméras…</span></div>
+        <div class="hint">Sur le PC relié aux webcams, ouvrez <b>cameras.html</b> (même adresse que cette appli) et saisissez ce code.
+          Les fléchettes détectées s'ajoutent toutes seules ; en cas d'erreur, <b>Annuler</b> puis touchez la bonne case.</div>
+      </div>
     </div>
     <button class="start" id="startBtn">Commencer</button>
   </div>
@@ -290,12 +316,16 @@ const COLORS = ["#2f80ed","#e5484d","#2f9e5b","#e2a52b","#9b6cf0","#14b8a6","#ec
 const QUICK_TOTALS = [26, 41, 45, 60, 81, 100, 140];
 
 /* ================= Setup ================= */
-const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"] }, store.get("darts-setup") || {});
+const newCodeStr = () => Array.from({length:4}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("");
+const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr() }, store.get("darts-setup") || {});
 
 function renderSetup(){
   document.querySelectorAll("#gameSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.game));
   document.querySelectorAll("#outSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.out));
   $("outRow").hidden = setup.game === "cricket";
+  document.querySelectorAll("#autoSeg button").forEach(b => b.classList.toggle("on", (b.dataset.v === "on") === setup.auto));
+  $("autoBox").hidden = !setup.auto;
+  $("codeBox").textContent = setup.code;
   const box = $("players");
   box.innerHTML = "";
   setup.players.forEach((name, i) => {
@@ -317,6 +347,8 @@ function renderSetup(){
 }
 $("gameSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.game = b.dataset.v; renderSetup(); } };
 $("outSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.out = b.dataset.v; renderSetup(); } };
+$("autoSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.auto = b.dataset.v === "on"; renderSetup(); camRestart(); } };
+$("newCode").onclick = () => { setup.code = newCodeStr(); renderSetup(); camRestart(); };
 $("addPlayer").onclick = () => { setup.players.push("Joueur " + (setup.players.length+1)); renderSetup(); };
 $("startBtn").onclick = () => {
   const names = setup.players.map((n,i) => n.trim() || ("Joueur "+(i+1)));
@@ -367,12 +399,14 @@ function log(e){ e.p = G.cur; G.log.push(e); if(G.log.length > 60) G.log.shift()
 const val = d => d.n * d.m;
 const lbl = d => d.n === 0 ? "Raté" : d.n === 25 ? (d.m === 2 ? "Bull" : "25") : (d.m === 3 ? "T" : d.m === 2 ? "D" : "S") + d.n;
 
-function throwDart(n, m){
+function throwDart(n, m, pos, fromCam){
   if(!G || pending || G.winner !== null || G.turn.length >= 3) return;
   if(n === 0) m = 1;
   snap();
   const p = G.players[G.cur];
   const d = {n, m};
+  if(pos) d.pos = [Math.round(pos[0]*10)/10, Math.round(pos[1]*10)/10];
+  if(fromCam) d.cam = 1;
   G.turn.push(d);
   p.darts++;
 
@@ -551,12 +585,26 @@ function buildBoard(){
   s += `<circle class="hitz" r="${R.obull}" fill="var(--b-green)" stroke="#0b0d10" data-n="25" data-m="1"/>`;
   s += `<circle class="hitz" r="${R.bull}" fill="var(--b-red)" stroke="#0b0d10" data-n="25" data-m="2"/>`;
   s += `<circle r="${R.dOut}" fill="none" stroke="#0b0d10" stroke-width="2" pointer-events="none"/>`;
+  s += `<g id="marks"></g>`;
   $("board").innerHTML = s;
+}
+// real board millimetres -> drawn board (whose rings are widened), ring by ring
+const MM = [[0,0],[6.35,15],[15.9,32],[99,96],[107,122],[162,146],[170,172],[230,200]];
+function uiPos(x, y){
+  const r = Math.hypot(x, y); if(!r) return [0,0];
+  let k = MM.length - 1;
+  for(let i=1;i<MM.length;i++) if(r <= MM[i][0]){ k = i; break; }
+  const [r0,u0] = MM[k-1], [r1,u1] = MM[k];
+  const u = Math.min(200, u0 + (r - r0) * (u1 - u0) / (r1 - r0));
+  return [x * u / r, y * u / r];
 }
 $("board").addEventListener("click", e => {
   const el = e.target.closest("[data-n]"); if(!el) return;
   el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 220);
-  throwDart(+el.dataset.n, +el.dataset.m);
+  const svg = $("board"), pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+  throwDart(+el.dataset.n, +el.dataset.m, +el.dataset.n ? [q.x, q.y] : null);
 });
 
 let flashT;
@@ -648,6 +696,7 @@ function render(){
     : `<span class="hempty">Touchez la cible pour marquer</span>`;
   hl.scrollLeft = hl.scrollWidth;
 
+  $("marks").innerHTML = G.turn.filter(d => d.pos).map(d => `<circle class="mark ${d.cam?'cam':''}" cx="${d.pos[0]}" cy="${d.pos[1]}" r="7"/>`).join("");
   $("undoBtn").disabled = !history.length;
   $("nextBtn").querySelector(".t").textContent = G.turn.length ? "Tour suivant" : "Passer";
 }
@@ -721,12 +770,13 @@ $("quick").addEventListener("click", e => {
   else if(q[0] === "t"){ const v = +q.slice(1); if(submitTotal(v)) G.lastQuick = v; render(); }
 });
 $("undoBtn").onclick = undo;
-$("nextBtn").onclick = () => {
+function nextTurn(){
   if(!G || G.winner !== null || flush()) return;
   snap();
   G.players[G.cur].darts += 3 - G.turn.length;   // darts not entered count as missed
   endTurn(true);
-};
+}
+$("nextBtn").onclick = nextTurn;
 $("resetBtn").onclick = () => confirmBox("Réinitialiser ?", "La manche en cours repart de zéro. Les manches gagnées sont conservées.", "Réinitialiser",
   () => newGame(G.type, G.out, G.players.map(p => p.name), G.players.map(p => p.legs), G.starter));
 $("gearBtn").onclick = () => { if(!$("game").hidden){ save(); showSetup(); } };
@@ -748,7 +798,51 @@ document.addEventListener("keydown", e => {
   else if(e.key === "Enter") $("nextBtn").click();
 });
 
+/* ================= Cameras (automatic scoring) ================= */
+// The PC with the webcams (cameras.html) posts detected darts to api.php; the iPad polls it with the shared code.
+let camLast = -1, camTimer = null, camPaused = false, camSeen = null, camFails = 0;
+const camChan = "BroadcastChannel" in window ? new BroadcastChannel("darts-cam") : null;
+if(camChan) camChan.onmessage = e => { if(setup.auto){ camSeen = Date.now(); camEvent(e.data); } };
+
+function camEvent(ev){
+  if(!ev || ev.t === "hb" || camPaused) return;
+  if(!G || $("game").hidden || !$("ov").hidden) return;
+  if(ev.t === "dart") throwDart(ev.n, ev.m, typeof ev.x === "number" ? uiPos(ev.x, ev.y) : null, true);
+  else if(ev.t === "takeout" && (G.turn.length || pending)) nextTurn();
+}
+async function camPoll(){
+  if(!setup.auto || !setup.code) return;
+  try{
+    const r = await fetch("api.php?code=" + encodeURIComponent(setup.code) + "&since=" + camLast, { cache:"no-store" });
+    if(!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    if(camLast >= 0) d.events.forEach(camEvent);
+    camLast = d.last;
+    if(d.hb !== null && d.hb < 15) camSeen = Date.now();
+    camFails = 0;
+  }catch(e){ camFails++; }
+  camStatus();
+}
+function camStatus(){
+  const on = setup.auto, ok = camSeen && Date.now() - camSeen < 15000;
+  const txt = !on ? "" : camFails > 2 ? "Serveur injoignable : l'appli doit être sur le site avec api.php" : ok ? "PC des caméras connecté" : "Recherche du PC des caméras…";
+  const kind = ok && camFails <= 2 ? "ok" : "warn";
+  $("camStat").className = "camstat " + kind;
+  $("camStat").querySelector("span").textContent = txt;
+  const b = $("camBtn");
+  b.hidden = !on;
+  b.className = "hbtn camind " + kind + (camPaused ? " pause" : "");
+  b.title = camPaused ? "Caméras en pause (toucher pour reprendre)" : txt;
+}
+function camRestart(){
+  clearInterval(camTimer); camLast = -1; camFails = 0; camSeen = null;
+  if(setup.auto){ camPoll(); camTimer = setInterval(camPoll, 700); }
+  camStatus();
+}
+$("camBtn").onclick = () => { camPaused = !camPaused; flash(camPaused ? "Caméras en pause" : "Caméras actives"); camStatus(); };
+
 /* boot */
+camRestart();
 buildBoard();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(function(){}); }
 const saved = store.get("darts-game");
