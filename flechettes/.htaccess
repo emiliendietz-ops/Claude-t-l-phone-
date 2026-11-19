@@ -1,0 +1,9 @@
+# Type correct pour le manifeste (installation sur l'écran d'accueil)
+AddType application/manifest+json .webmanifest
+
+# La page et le service worker sont toujours revérifiés, pour que les mises à jour arrivent
+<IfModule mod_headers.c>
+  <FilesMatch "(index\.html|sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
