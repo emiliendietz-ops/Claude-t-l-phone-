@@ -273,6 +273,10 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
         <button data-v="turn">Score du tour</button>
         <button data-v="dart">Chaque fléchette</button>
       </div>
+      <div class="row" id="toneRow"><span>Ton</span><div class="seg" id="toneSeg">
+        <button data-v="pote">Entre potes</button>
+        <button data-v="pro">Classique</button>
+      </div></div>
       <div class="row" id="voiceRow"><select id="voiceSel"></select><button class="voicebtn" id="voiceTest">Écouter</button></div>
     </div>
     <div class="card">
@@ -331,7 +335,7 @@ const QUICK_TOTALS = [26, 41, 45, 60, 81, 100, 140];
 
 /* ================= Setup ================= */
 const newCodeStr = () => Array.from({length:4}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("");
-const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr(), voice:"turn", voiceName:"" }, store.get("darts-setup") || {});
+const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr(), voice:"turn", voiceName:"", tone:"pote" }, store.get("darts-setup") || {});
 
 function renderSetup(){
   document.querySelectorAll("#gameSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.game));
@@ -340,7 +344,8 @@ function renderSetup(){
   document.querySelectorAll("#autoSeg button").forEach(b => b.classList.toggle("on", (b.dataset.v === "on") === setup.auto));
   $("autoBox").hidden = !setup.auto;
   document.querySelectorAll("#voiceSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.voice));
-  $("voiceRow").hidden = setup.voice === "off";
+  $("voiceRow").hidden = $("toneRow").hidden = setup.voice === "off";
+  document.querySelectorAll("#toneSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.tone));
   fillVoices();
   $("codeBox").textContent = setup.code;
   const box = $("players");
@@ -366,7 +371,9 @@ $("gameSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup
 $("outSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.out = b.dataset.v; renderSetup(); } };
 $("voiceSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.voice = b.dataset.v; voiceUnlock(); renderSetup(); voiceBtnState(); } };
 $("voiceSel").onchange = e => { setup.voiceName = e.target.value; store.set("darts-setup", setup); };
-$("voiceTest").onclick = () => { voiceUnlock(); sayNow("Cent quatre-vingts ! " + (setup.players[0] || "Joueur 1") + ", il vous reste 141."); };
+$("toneSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.tone = b.dataset.v; renderSetup(); } };
+$("voiceTest").onclick = () => { voiceUnlock(); const n = (setup.players[0] || "Joueur 1").trim();
+  sayNow(say("s180", {}) + " " + say("nextCo", {name:n, score:141})); };
 $("autoSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.auto = b.dataset.v === "on"; renderSetup(); camRestart(); } };
 $("newCode").onclick = () => { setup.code = newCodeStr(); renderSetup(); camRestart(); };
 $("addPlayer").onclick = () => { setup.players.push("Joueur " + (setup.players.length+1)); renderSetup(); };
@@ -406,7 +413,7 @@ function newGame(type, out, names, legs, starter){
     winner: null
   };
   G.turnStart = G.players[G.cur].score;
-  sayNow((type === "cricket" ? "Cricket. " : "Partie de " + type + ". ") + "Le jeu commence. " + G.players[G.cur].name + ", à vous.");
+  sayNow(say("start", {game: type === "cricket" ? "Cricket" : type, name: G.players[G.cur].name}));
   history = [];
   cancelPending();
   save();
@@ -454,12 +461,64 @@ function speak(text, cut){
 }
 const sayNow = t => speak(t, true);     // replaces whatever is being said
 const sayNext = t => speak(t, false);   // waits for the current sentence
-const dartWords = d => d.n === 0 ? "Raté" : d.n === 25 ? (d.m === 2 ? "Bull" : "25") : (d.m === 3 ? "Triple " : d.m === 2 ? "Double " : "") + d.n;
+// Phrase book: several lines per situation, picked at random. "pote" = friends (tutoiement), "pro" = classic caller.
+const PHRASES = {
+  pote: {
+    start:   ["C'est parti pour un {game} ! {name}, à toi l'honneur.", "Allez, on y va ! {name}, tu commences.", "Que le meilleur gagne ! {name}, c'est toi qui ouvres.", "{game}, c'est parti ! {name}, montre-nous ce que tu sais faire."],
+    s180:    ["Cent quatre-vingts ! Mais t'es qui ?!", "Cent quatre-vingts ! Le patron est dans la place !", "Cent quatre-vingts ! Respect total.", "Cent quatre-vingts ! On se calme, on se calme !"],
+    s140:    ["{s} ! Énorme !", "{s} ! Ça envoie du lourd.", "{s}, magnifique !", "{s} ! T'es en feu ce soir."],
+    s100:    ["{s}, la tonne ! Bien joué.", "{s}, joli tour !", "{s}, propre !"],
+    s60:     ["{s}, pas mal.", "{s}, ça passe.", "{s}, correct.", "{s}."],
+    s26:     ["Vingt-six… le fameux tour de bistrot !", "Vingt-six, le grand classique !", "Vingt-six. Un, vingt, cinq… on connaît la chanson."],
+    sLow:    ["{s}… on fera mieux la prochaine fois.", "Seulement {s}, allez, concentre-toi !", "{s}, petit tour.", "{s}. Échauffement, sûrement."],
+    s0:      ["Zéro ! Rien du tout…", "Zéro pointé, aïe !", "Zéro. La cible est pourtant grande !", "Trois fléchettes, zéro point. Chapeau l'artiste."],
+    bust:    ["Bust ! Trop gourmand !", "Bust ! Retour à la case départ.", "Bust ! Fallait viser plus petit.", "Bust ! Aïe aïe aïe."],
+    next:    ["À toi {name}, il te reste {score}.", "{name}, ton tour. Il te reste {score}.", "{name}, à toi de jouer. {score}."],
+    nextCo:  ["{name}, il te reste {score}, c'est jouable !", "{name}, {score} pour finir. Tu peux le faire !", "{name}, plus que {score}, on y croit !"],
+    nextCk:  ["À toi {name}.", "{name}, ton tour.", "{name}, vas-y."],
+    win:     ["Check-out ! {name} remporte la manche en {darts} fléchettes. Bravo !", "Et c'est gagné pour {name} ! Tournée générale ?", "{name} plie l'affaire ! Bien joué !"],
+    winBig:  ["Check-out à {co} ! {name}, c'est du grand art !", "Quel finish ! {co} pour {name}, chapeau bas !"],
+    winCk:   ["{name} gagne la manche ! Bravo !", "Et c'est {name} qui l'emporte !"],
+    marks0:  ["Rien de rien.", "Pas une marque…"],
+    marks1:  ["Une petite marque.", "Une marque, c'est un début."],
+    marks:   ["{m} marques.", "{m} marques, pas mal."],
+    marksBig:["{m} marques, superbe !", "{m} marques ! Joli !"],
+    bull:    ["Bull ! Dans le mille !", "Bull ! En plein cœur !"],
+    miss:    ["Raté !", "À côté !", "Dans le mur !"]
+  },
+  pro: {
+    start:   ["Partie de {game}. Le jeu commence. {name}, à vous."],
+    s180:    ["Cent quatre-vingts !"],
+    s140: ["{s}."], s100: ["{s}."], s60: ["{s}."], s26: ["{s}."], sLow: ["{s}."], s0: ["Zéro."],
+    bust:    ["Bust !"],
+    next:    ["À {name}, {score}."],
+    nextCo:  ["{name}, il vous reste {score}."],
+    nextCk:  ["À {name}."],
+    win:     ["Check-out ! {name} gagne la manche, en {darts} fléchettes."],
+    winBig:  ["Check-out à {co} ! {name} gagne la manche, en {darts} fléchettes."],
+    winCk:   ["{name} gagne la manche !"],
+    marks0: ["Aucune marque."], marks1: ["Une marque."], marks: ["{m} marques."], marksBig: ["{m} marques."],
+    bull: ["Bull"], miss: ["Raté"]
+  }
+};
+const lastLine = {};
+function say(key, vars){
+  const list = (PHRASES[setup.tone] || PHRASES.pote)[key] || [""];
+  let i = Math.floor(Math.random() * list.length);
+  if(list.length > 1 && i === lastLine[key]) i = (i + 1) % list.length;   // never the same line twice in a row
+  lastLine[key] = i;
+  return list[i].replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? vars[k] : "");
+}
+const dartWords = d => d.n === 0 ? say("miss", {}) : d.n === 25 ? (d.m === 2 ? say("bull", {}) : "25") : (d.m === 3 ? "Triple " : d.m === 2 ? "Double " : "") + d.n;
+function turnWords(s){
+  const key = s === 180 ? "s180" : s >= 140 ? "s140" : s >= 100 ? "s100" : s >= 60 ? "s60" : s === 26 ? "s26" : s > 0 ? "sLow" : "s0";
+  return say(key, {s});
+}
 function announceNext(){
   const q = G.players[G.cur];
-  if(G.type === "cricket") return `À ${q.name}.`;
+  if(G.type === "cricket") return say("nextCk", {name:q.name});
   const co = q.score <= 170 && checkout(q.score, 3, G.out === "double");
-  return co ? `${q.name}, il vous reste ${q.score}.` : `À ${q.name}, ${q.score}.`;
+  return say(co ? "nextCo" : "next", {name:q.name, score:q.score});
 }
 function voiceBtnState(){
   const b = $("voiceBtn");
@@ -503,7 +562,7 @@ function throwDart(n, m, pos, fromCam){
       log({l: "Bust", v: 0, x: true});
       render();
       flash("Bust !", "bad");
-      sayNow("Bust !");
+      sayNow(say("bust", {}));
       return later(() => endTurn(true), 1000);
     }
     p.score = left;
@@ -559,8 +618,8 @@ function endTurn(skipSnap){
   G.turnStart = G.players[G.cur].score;
   save();
   render();
-  if(G.type === "cricket") sayNext((marks ? marks + (marks > 1 ? " marques. " : " marque. ") : "") + announceNext());
-  else sayNext((wasBust ? "" : (scored === 180 ? "Cent quatre-vingts ! " : scored + ". ")) + announceNext());
+  if(G.type === "cricket") sayNext(say(marks === 0 ? "marks0" : marks === 1 ? "marks1" : marks >= 5 ? "marksBig" : "marks", {m:marks}) + " " + announceNext());
+  else sayNext((wasBust ? "" : turnWords(scored) + " ") + announceNext());
 }
 
 function finishLeg(){
@@ -570,7 +629,7 @@ function finishLeg(){
   store.del("darts-game");
   render();
   flash(G.type === "cricket" ? "Gagné !" : "Check-out !", "good");
-  sayNow(G.type === "cricket" ? `${w.name} gagne la manche !` : `Check-out ! ${w.name} gagne la manche, en ${w.darts} fléchettes.`);
+  sayNow(G.type === "cricket" ? say("winCk", {name:w.name}) : say(G.turnStart >= 100 ? "winBig" : "win", {name:w.name, darts:w.darts, co:G.turnStart}));
   setTimeout(showEnd, 1000);
 }
 
@@ -589,7 +648,7 @@ function submitTotal(v){
   if(left < 0 || (dbl && left === 1)){
     G.bust = true;
     log({l: "Bust", v: 0, x: true});
-    render(); flash("Bust !", "bad"); sayNow("Bust !");
+    render(); flash("Bust !", "bad"); sayNow(say("bust", {}));
     later(() => endTurn(true), 1000);
     return true;
   }
