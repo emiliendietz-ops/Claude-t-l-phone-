@@ -278,6 +278,7 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
         <button data-v="pro">Classique</button>
       </div></div>
       <div class="row" id="voiceRow"><select id="voiceSel"></select><button class="voicebtn" id="voiceTest">Écouter</button></div>
+      <div class="camstat" id="voiceStat" hidden><i></i><span></span></div>
     </div>
     <div class="card">
       <h2>Comptage automatique (caméras)</h2>
@@ -320,6 +321,7 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
 
 <div class="ov" id="ov" hidden><div class="box" id="ovBox"></div></div>
 
+<script src="piper.js"></script>
 <script>
 "use strict";
 /* ================= Helpers ================= */
@@ -335,7 +337,8 @@ const QUICK_TOTALS = [26, 41, 45, 60, 81, 100, 140];
 
 /* ================= Setup ================= */
 const newCodeStr = () => Array.from({length:4}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("");
-const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr(), voice:"turn", voiceName:"", tone:"pote" }, store.get("darts-setup") || {});
+const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr(), voice:"turn", voiceName:"piper:jessica", tone:"pote" }, store.get("darts-setup") || {});
+if(!setup.voiceName) setup.voiceName = "piper:jessica";   // older saved settings: switch to the natural voice
 
 function renderSetup(){
   document.querySelectorAll("#gameSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.game));
@@ -369,8 +372,8 @@ function renderSetup(){
 }
 $("gameSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.game = b.dataset.v; renderSetup(); } };
 $("outSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.out = b.dataset.v; renderSetup(); } };
-$("voiceSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.voice = b.dataset.v; voiceUnlock(); renderSetup(); voiceBtnState(); } };
-$("voiceSel").onchange = e => { setup.voiceName = e.target.value; store.set("darts-setup", setup); };
+$("voiceSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.voice = b.dataset.v; voiceUnlock(); renderSetup(); voiceBtnState(); piperEnsure(); } };
+$("voiceSel").onchange = e => { setup.voiceName = e.target.value; store.set("darts-setup", setup); piperEnsure(); voiceStatus(); };
 $("toneSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.tone = b.dataset.v; renderSetup(); } };
 $("voiceTest").onclick = () => { voiceUnlock(); const n = (setup.players[0] || "Joueur 1").trim();
   sayNow(say("s180", {}) + " " + say("nextCo", {name:n, score:141})); };
@@ -424,9 +427,81 @@ function snap(){ history.push(JSON.stringify(G)); if(history.length > 300) histo
 function log(e){ e.p = G.cur; G.log.push(e); if(G.log.length > 60) G.log.shift(); }
 
 /* ================= Voice (caller) ================= */
-// Uses the speech synthesis built into Safari/iPadOS: French voices, works offline, nothing to download.
+// Two engines: "Jessica", a natural AI voice computed in the iPad (Piper, piper.js, downloaded once into voix/),
+// and the speech synthesis built into Safari, used while Jessica downloads or if it cannot run.
 const synth = window.speechSynthesis || null;
 let voiceMuted = false, voiceUnlocked = false;
+const PIPER = { "piper:jessica": { model:"fr_FR-upmc-medium", speaker:0, label:"Jessica — voix IA naturelle", size:"75 Mo" } };
+let piperState = "idle", piperPct = 0, piperChain = Promise.resolve(), gen = 0, playEnd = 0, sources = [], actx = null;
+const pcmCache = new Map();
+const piperSel = () => PIPER[setup.voiceName] || null;
+function piperEnsure(){
+  const pv = piperSel();
+  if(!pv || piperState === "loading" || piperState === "ready" || !window.PiperTTS || setup.voice === "off") return;
+  piperState = "loading"; piperPct = 0; voiceStatus();
+  PiperTTS.load(pv.model, (got, total) => { if(total){ const p = Math.floor(got * 100 / total); if(p !== piperPct){ piperPct = p; voiceStatus(); } } })
+    .then(() => { piperState = "ready"; voiceStatus(); setTimeout(piperWarm, 1500); })
+    .catch(() => { piperState = "error"; voiceStatus(); });
+}
+// precompute the fixed sentences of the phrase book in the background, one at a time so live speech never waits long
+function piperWarm(){
+  const pv = piperSel(); if(!pv || piperState !== "ready") return;
+  const todo = [...new Set(Object.values(PHRASES[setup.tone] || PHRASES.pote).flat()
+    .flatMap(t => t.split(/(?<=[.!?…])\s+/)).filter(t => t && !t.includes("{") && !pcmCache.has(t)))].slice(0, 60);
+  const step = () => {
+    const t = todo.shift(); if(!t || piperState !== "ready") return;
+    piperChain = piperChain.then(async () => {
+      if(!pcmCache.has(t)) pcmCache.set(t, await PiperTTS.synth(pv.model, t, { speaker:pv.speaker, speed:1.05 }));
+    }).catch(() => {});
+    piperChain.then(() => setTimeout(step, 150));
+  };
+  step();
+}
+function voiceStatus(){
+  const el = $("voiceStat"); if(!el) return;
+  const pv = piperSel();
+  el.hidden = !pv || setup.voice === "off";
+  el.className = "camstat " + (piperState === "ready" ? "ok" : "warn");
+  el.querySelector("span").textContent =
+    piperState === "ready" ? "Jessica est prête (fonctionne hors ligne)" :
+    piperState === "loading" ? `Téléchargement de Jessica… ${piperPct} % (${pv ? pv.size : ""}, une seule fois). En attendant : voix de l'iPad.` :
+    piperState === "error" ? "Jessica n'a pas pu se charger (dossier voix/ manquant ?). Voix de l'iPad utilisée." : "";
+}
+function audioUnlock(){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!actx && AC) actx = new AC();
+  if(actx && actx.state !== "running") actx.resume().catch(() => {});
+}
+document.addEventListener("pointerdown", audioUnlock, { capture:true });
+function playPcm(a){
+  audioUnlock(); if(!actx) return;
+  const buf = actx.createBuffer(1, a.pcm.length, a.sampleRate);
+  buf.getChannelData(0).set(a.pcm);
+  const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+  const t = Math.max(actx.currentTime + 0.03, playEnd);
+  src.start(t); playEnd = t + buf.duration;
+  sources.push(src); src.onended = () => { sources = sources.filter(x => x !== src); };
+}
+function piperStop(){ gen++; sources.forEach(s => { try{ s.stop(); }catch(e){} }); sources = []; playEnd = 0; }
+// each sentence is played as soon as it is computed, while the next one is being computed
+function piperSay(text, cut){
+  const pv = piperSel();
+  if(cut) piperStop();
+  const my = gen, parts = text.split(/(?<=[.!?…])\s+/).map(x => x.trim()).filter(Boolean);
+  piperChain = piperChain.then(async () => {
+    for(const part of parts){
+      if(my !== gen) return;
+      let a = pcmCache.get(part);
+      if(!a){
+        a = await PiperTTS.synth(pv.model, part, { speaker:pv.speaker, speed:1.05 });
+        pcmCache.set(part, a);
+        if(pcmCache.size > 200) pcmCache.delete(pcmCache.keys().next().value);
+      }
+      if(my !== gen) return;
+      playPcm(a);
+    }
+  }).catch(() => {});
+}
 function frVoices(){
   if(!synth) return [];
   return synth.getVoices().filter(v => /^fr/i.test(v.lang)).sort((a,b) => (b.localService - a.localService) || (/fr-FR/i.test(b.lang) - /fr-FR/i.test(a.lang)));
@@ -438,21 +513,28 @@ function pickVoice(){
 function fillVoices(){
   const sel = $("voiceSel"); if(!sel) return;
   const vs = frVoices(), cur = pickVoice();
-  sel.innerHTML = vs.length ? vs.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join("") : `<option value="">Voix française par défaut</option>`;
-  if(cur) sel.value = cur.name;
-  sel.disabled = !synth;
+  sel.innerHTML = Object.entries(PIPER).map(([k,v]) => `<option value="${k}">${esc(v.label)}</option>`).join("") +
+    (vs.length ? `<optgroup label="Voix de l'iPad">${vs.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join("")}</optgroup>` : "");
+  sel.value = piperSel() ? setup.voiceName : cur ? cur.name : Object.keys(PIPER)[0];
+  voiceStatus();
 }
 if(synth && "onvoiceschanged" in synth) synth.onvoiceschanged = fillVoices;
 // iPad: speech must first be started by a tap, after that the camera can trigger it too
 function voiceUnlock(){
+  audioUnlock();
   if(!synth || voiceUnlocked) return;
   voiceUnlocked = true;
   const u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u);
 }
 document.addEventListener("pointerdown", voiceUnlock, { once:true, capture:true });
-const voiceOn = () => synth && setup.voice !== "off" && !voiceMuted;
+const voiceOn = () => setup.voice !== "off" && !voiceMuted;
 function speak(text, cut){
   if(!voiceOn() || !text) return;
+  if(piperSel()){
+    if(piperState === "ready") return piperSay(text, cut);
+    piperEnsure();
+  }
+  if(!synth) return;
   if(cut) synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "fr-FR"; u.rate = 1.05;
@@ -522,7 +604,7 @@ function announceNext(){
 }
 function voiceBtnState(){
   const b = $("voiceBtn");
-  b.hidden = !synth || setup.voice === "off";
+  b.hidden = setup.voice === "off";
   b.classList.toggle("muted", voiceMuted);
   b.title = voiceMuted ? "Voix coupée (toucher pour réactiver)" : "Voix (toucher pour couper)";
 }
@@ -663,6 +745,7 @@ function submitTotal(v){
 function undo(){
   if(!history.length) return;
   if(synth) synth.cancel();
+  piperStop();
   cancelPending();
   G = JSON.parse(history.pop());
   $("ov").hidden = true;
@@ -980,12 +1063,13 @@ function camRestart(){
   if(setup.auto){ camPoll(); camTimer = setInterval(camPoll, 700); }
   camStatus();
 }
-$("voiceBtn").onclick = () => { voiceMuted = !voiceMuted; if(voiceMuted && synth) synth.cancel(); flash(voiceMuted ? "Voix coupée" : "Voix activée"); voiceBtnState(); };
+$("voiceBtn").onclick = () => { voiceMuted = !voiceMuted; if(voiceMuted){ if(synth) synth.cancel(); piperStop(); } flash(voiceMuted ? "Voix coupée" : "Voix activée"); voiceBtnState(); };
 $("camBtn").onclick = () => { camPaused = !camPaused; flash(camPaused ? "Caméras en pause" : "Caméras actives"); camStatus(); };
 
 /* boot */
 camRestart();
 voiceBtnState();
+piperEnsure();
 buildBoard();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(function(){}); }
 const saved = store.get("darts-game");

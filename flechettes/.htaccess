@@ -1,9 +1,15 @@
-# Type correct pour le manifeste (installation sur l'écran d'accueil)
+# Types corrects : manifeste (écran d'accueil), modules et WebAssembly de la voix IA
 AddType application/manifest+json .webmanifest
+AddType text/javascript .mjs
+AddType application/wasm .wasm
+AddType application/octet-stream .onnx .data
 
 # La page et le service worker sont toujours revérifiés, pour que les mises à jour arrivent
 <IfModule mod_headers.c>
-  <FilesMatch "(index\.html|sw\.js|manifest\.webmanifest)$">
+  <FilesMatch "(index\.html|sw\.js|piper\.js|manifest\.webmanifest)$">
     Header set Cache-Control "no-cache"
+  </FilesMatch>
+  <FilesMatch "\.(onnx|wasm|data)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 </IfModule>
