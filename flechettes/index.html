@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Darts Score</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Darts Score">
+<meta name="theme-color" content="#0d1014">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0d1014; --bg-2:#12161b; --panel:#171c22; --panel-2:#1f262e; --line:#2a323c;
+  --ink:#f3f4f6; --ink-soft:#9aa3ad; --ink-faint:#5d6773;
+  --blue:#2f80ed; --red:#e5484d; --green:#2f9e5b; --accent:#3b8cff;
+  --b-red:#d8423a; --b-green:#2a9a58; --b-cream:#efe1c0; --b-black:#15181c;
+  --r:18px;
+  --f:system-ui,-apple-system,"SF Pro Display","Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;color:var(--ink);font:16px/1.3 var(--f);
+  background:radial-gradient(1200px 700px at 50% 30%,#161b22 0%,var(--bg) 70%);background-color:var(--bg);
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none;overflow:hidden;display:flex;flex-direction:column}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+input{font:inherit}
+[hidden]{display:none!important}
+h1,h2,h3{margin:0;font-weight:700}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Header ---------- */
+header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:none}
+.logo{display:flex;align-items:center;gap:18px;font-size:22px;font-weight:600;min-width:0}
+.logo svg{width:44px;height:44px;flex:none}
+.mode{flex:1;display:flex;align-items:center;gap:22px;justify-content:center;color:var(--ink-soft);font-size:22px;white-space:nowrap;min-width:0}
+.mode::before,.mode::after{content:"";height:1px;flex:1;max-width:230px;background:linear-gradient(90deg,transparent,var(--line))}
+.mode::after{background:linear-gradient(90deg,var(--line),transparent)}
+.hbtn{width:48px;height:48px;display:grid;place-items:center;border-radius:12px;color:var(--ink-soft)}
+.hbtn:active{background:var(--panel-2)}
+.hbtn svg{width:30px;height:30px}
+.camind{position:relative}
+.camind i{position:absolute;right:7px;bottom:8px;width:11px;height:11px;border-radius:50%;background:var(--ink-faint);border:2px solid var(--bg)}
+.hbtn.muted{opacity:.4}
+.camind.ok i{background:#2fbf71} .camind.warn i{background:#e2a52b} .camind.pause{opacity:.45}
+#board .mark{fill:#fff;stroke:#000;stroke-width:2.5;pointer-events:none}
+#board .mark.cam{fill:#00e5ff}
+.hint{color:var(--ink-soft);font-size:15px;margin-top:12px;line-height:1.45}
+.hint b{color:var(--ink)}
+.codebox{font-size:30px;font-weight:800;letter-spacing:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:8px 18px;font-variant-numeric:tabular-nums}
+#voiceSel{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--ink);font-size:17px}
+.voicebtn{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 18px;font-size:17px;font-weight:600}
+.camstat{display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:600}
+.camstat i{width:11px;height:11px;border-radius:50%;background:var(--ink-faint)}
+.camstat.ok i{background:#2fbf71} .camstat.warn i{background:#e2a52b}
+
+/* ---------- Game layout ---------- */
+#game{flex:1;min-height:0;display:flex;flex-direction:column}
+.stage{flex:1;min-height:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:28px;padding:4px 32px}
+.side{display:flex;flex-direction:column;gap:14px;justify-content:center;min-width:0;height:100%}
+
+.pcard{position:relative;border-radius:var(--r);padding:20px 24px 18px;text-align:center;
+  --c:var(--blue);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,var(--panel)) 0%,var(--panel) 70%);
+  border:1.5px solid color-mix(in srgb,var(--c) 35%,transparent);
+  transition:border-color .2s, box-shadow .2s, opacity .2s;opacity:.72}
+.pcard.cur{opacity:1;border-color:var(--c);box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 40%,transparent),0 0 38px -8px color-mix(in srgb,var(--c) 70%,transparent)}
+.pill{display:inline-block;background:var(--c);color:#fff;font-weight:700;font-size:22px;padding:7px 30px;border-radius:999px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legs{position:absolute;top:14px;right:16px;font-size:13px;font-weight:700;color:var(--ink-soft);background:var(--panel-2);border-radius:999px;padding:3px 10px}
+.score{font-size:clamp(64px,9.5vw,136px);font-weight:800;line-height:1;margin:18px 0 16px;letter-spacing:-2px}
+.sep{height:1px;background:var(--line);margin:0 -4px 12px}
+.lastlbl{color:var(--ink-soft);font-size:18px}
+.last{display:flex;align-items:baseline;justify-content:center;gap:22px;margin-top:4px;min-height:58px}
+.last b{font-size:52px;font-weight:800;color:var(--c);line-height:1.05}
+.last span{font-size:22px;color:var(--ink);opacity:.9}
+.last.bust b{font-size:34px;color:var(--ink-soft)}
+.checkout{margin-top:10px;font-size:16px;color:var(--ink);background:var(--panel-2);border-radius:10px;padding:8px 10px}
+.checkout:empty{display:none}
+.checkout small{color:var(--ink-soft);margin-right:6px}
+
+/* compact cards when more than one player per side */
+.side.many .pcard{padding:12px 16px}
+.side.many .pill{font-size:17px;padding:4px 18px}
+.side.many .score{font-size:clamp(40px,5vw,64px);margin:8px 0}
+.side.many .sep,.side.many .lastlbl{display:none}
+.side.many .last{min-height:0;gap:12px}
+.side.many .last b{font-size:26px}
+.side.many .last span{font-size:16px}
+.side.many .checkout{margin-top:6px;font-size:14px;padding:5px 8px}
+
+/* cricket marks inside cards */
+.ckm{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
+.ckm div{background:var(--panel-2);border-radius:8px;padding:4px 0 2px;font-size:13px;color:var(--ink-soft);font-weight:700}
+.ckm div.dead{opacity:.4}
+.ckm svg{display:block;margin:0 auto;width:26px;height:26px}
+.side.many .ckm svg{width:18px;height:18px}
+
+/* ---------- Dartboard ---------- */
+.boardwrap{position:relative;width:var(--bs);height:var(--bs);--bs:min(44vw,calc(100vh - 64px - 96px - 110px - 36px))}
+#board{width:100%;height:100%;display:block;overflow:visible;touch-action:manipulation}
+#board path,#board circle.hitz{cursor:pointer;transition:opacity .12s}
+#board .hit{opacity:.45}
+#board text{font:600 21px var(--f);fill:#e9ebee;pointer-events:none;text-anchor:middle;dominant-baseline:central}
+.dartchips{position:absolute;left:50%;bottom:-6px;transform:translate(-50%,100%);display:flex;gap:8px}
+.flash{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.8);background:rgba(13,16,20,.88);border:1px solid var(--line);
+  border-radius:16px;padding:10px 22px;font-size:40px;font-weight:800;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.flash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.flash.bad{background:var(--red);border-color:var(--red)}
+.flash.good{background:var(--green);border-color:var(--green)}
+
+/* ---------- Quick row ---------- */
+.quick{display:flex;justify-content:center;gap:14px;padding:14px 24px 12px;flex:none}
+.quick button{flex:1;min-width:0;max-width:132px;height:66px;border-radius:12px;background:linear-gradient(180deg,#1d232a,#161b21);border:1px solid var(--line);
+  font-size:30px;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.quick button:active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.quick button.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 0 22px -6px var(--accent)}
+.quick button.txt{font-size:20px;color:var(--ink-soft)}
+.quick button:disabled{opacity:.3}
+
+/* ---------- Bottom bar ---------- */
+.bottom{display:flex;gap:16px;padding:0 24px 18px;align-items:stretch;flex:none}
+.hist{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:0 18px;height:88px}
+.hist .hl{display:flex;align-items:center;gap:12px;color:var(--ink-soft);font-size:19px;flex:none;padding-right:18px}
+.hist .hl svg{width:28px;height:28px}
+.hlist{flex:1;min-width:0;display:flex;overflow-x:auto;scrollbar-width:none;gap:0;mask-image:linear-gradient(90deg,transparent,#000 24px)}
+.hlist::-webkit-scrollbar{display:none}
+.hi{flex:none;display:flex;gap:12px;align-items:center;padding:0 22px;border-right:1px solid var(--line)}
+.hi:last-child{border-right:0}
+.hi i{width:4px;height:42px;border-radius:2px;background:var(--c)}
+.hi div{line-height:1.25}
+.hi b{display:block;font-size:20px;font-weight:600;color:var(--c)}
+.hi span{font-size:20px;color:var(--ink)}
+.hi.x b{color:var(--ink-soft)}
+.hempty{color:var(--ink-faint);padding-left:6px}
+.bbtn{display:flex;align-items:center;gap:12px;padding:0 24px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line);font-size:19px;font-weight:600;white-space:nowrap}
+.bbtn svg{width:26px;height:26px}
+.bbtn:active{background:var(--panel-2)}
+.bbtn:disabled{opacity:.35}
+.bbtn.go{background:color-mix(in srgb,var(--accent) 20%,var(--panel));border-color:color-mix(in srgb,var(--accent) 60%,transparent)}
+
+/* ---------- Setup ---------- */
+#setup{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.setup-in{max-width:760px;margin:0 auto;padding:12px 20px 40px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.card h2{font-size:14px;text-transform:uppercase;letter-spacing:1.4px;color:var(--ink-soft);margin-bottom:14px;font-weight:600}
+.seg{display:flex;flex-wrap:wrap;gap:10px}
+.seg button{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px 20px;font-size:19px;font-weight:600;min-width:92px}
+.seg button.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel-2))}
+.row{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}
+.row > span{color:var(--ink-soft);min-width:120px}
+.players{display:flex;flex-direction:column;gap:10px}
+.pl{display:flex;gap:10px;align-items:center}
+.pl .dot{width:14px;height:14px;border-radius:50%;flex:none}
+.pl input{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:13px 16px;color:var(--ink);font-size:19px;-webkit-user-select:text;user-select:text}
+.pl input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.icon-btn{width:50px;height:50px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);font-size:22px;flex:none}
+.add{margin-top:12px;border:1px dashed var(--line);border-radius:12px;padding:13px;width:100%;color:var(--ink-soft);font-size:17px}
+.start{width:100%;padding:20px;border-radius:var(--r);background:var(--accent);font-size:22px;font-weight:700;color:#fff}
+.resume{width:100%;padding:16px;border-radius:var(--r);background:var(--panel);border:1px solid var(--accent);font-size:19px;font-weight:600;margin-bottom:16px}
+
+/* ---------- Overlay ---------- */
+.ov{position:fixed;inset:0;background:rgba(5,7,9,.78);display:grid;place-items:center;z-index:30;padding:16px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ov .box{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:28px;width:min(560px,100%);text-align:center;max-height:100%;overflow:auto}
+.ov h2{font-size:32px;margin-bottom:6px}
+.ov p{color:var(--ink-soft);margin:0 0 18px}
+.ov table{width:100%;border-collapse:collapse;margin-bottom:20px}
+.ov td,.ov th{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right}
+.ov td:first-child,.ov th:first-child{text-align:left}
+.ov th{color:var(--ink-soft);font-weight:600;font-size:14px}
+.btns{display:grid;gap:10px}
+.btns button{padding:17px;border-radius:14px;font-size:19px;font-weight:700;background:var(--panel-2);border:1px solid var(--line)}
+.btns button.ok{background:var(--accent);border-color:var(--accent);color:#fff}
+.tdisp{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:10px 18px;font-size:52px;font-weight:800;text-align:right;margin-bottom:12px}
+.tdisp.err{color:var(--red);border-color:var(--red)}
+.tpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.tpad button{height:72px;border-radius:14px;background:var(--panel-2);border:1px solid var(--line);font-size:30px;font-weight:700}
+.tpad button:active{border-color:var(--accent)}
+.tpad button.ok{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ---------- Portrait / small ---------- */
+@media (orientation:portrait){
+  .stage{grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr);gap:16px 16px;padding:8px 16px}
+  .side{height:auto;justify-content:flex-start}
+  #sideL{grid-column:1;grid-row:1} #sideR{grid-column:2;grid-row:1}
+  .boardwrap{grid-column:1/-1;grid-row:2;justify-self:center;align-self:stretch;width:auto;height:100%;max-width:100%;aspect-ratio:1;min-height:0;padding:10px}
+  .score{font-size:clamp(56px,13vw,110px)}
+  .quick{gap:10px;padding:12px 16px}
+  .quick button{font-size:24px}
+  .bottom{padding:0 16px 16px;gap:10px}
+  .bbtn{padding:0 16px}
+  .bbtn .t{display:none}
+}
+@media (max-width:1000px) and (orientation:landscape){
+  .stage{gap:16px;padding:4px 16px}
+  .quick{gap:10px}
+  .quick button{font-size:24px}
+  .bbtn .t{display:none}
+  .mode::before,.mode::after{display:none}
+}
+@media (max-width:620px){
+  header{padding:0 12px;gap:8px}
+  .logo span{display:none}
+  .mode{font-size:17px}
+  .pill{font-size:16px;padding:4px 14px}
+  .last b{font-size:30px}
+  .last span{font-size:15px}
+  .lastlbl{font-size:14px}
+  .hist .hl span{display:none}
+  .quick button{font-size:18px;height:54px}
+  .quick button.txt{font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dart" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 44l14-14"/><path d="M18 30l4-4 6 6-4 4z"/><path d="M26 22l6-6M24 24l2-6 6 6-6 2"/>
+    <path d="M32 16l4-10 2 4 4 2-10 4z"/><path d="M36 6l6 6"/></g></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></g></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></g></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 11-2.34-5.66"/><path d="M20 4v5h-5"/></g></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></g></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3"/></g></symbol>
+  <symbol id="i-voice" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></g></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></g></symbol>
+</svg>
+
+<header>
+  <div class="logo"><svg><use href="#i-dart"/></svg><span>Darts Score</span></div>
+  <div class="mode" id="modeTxt"></div>
+  <button class="hbtn" id="voiceBtn" title="Voix (toucher pour couper)" hidden><svg><use href="#i-voice"/></svg></button>
+  <button class="hbtn camind" id="camBtn" title="Caméras (toucher pour mettre en pause)" hidden><svg><use href="#i-cam"/></svg><i></i></button>
+  <button class="hbtn" id="gearBtn" title="Réglages"><svg><use href="#i-gear"/></svg></button>
+  <button class="hbtn" id="fullBtn" title="Plein écran"><svg><use href="#i-full"/></svg></button>
+</header>
+
+<!-- ============ SETUP ============ -->
+<section id="setup">
+  <div class="setup-in">
+    <button class="resume" id="resumeBtn" hidden>Reprendre la partie en cours</button>
+    <div class="card">
+      <h2>Jeu</h2>
+      <div class="seg" id="gameSeg">
+        <button data-v="301">301</button>
+        <button data-v="501">501</button>
+        <button data-v="701">701</button>
+        <button data-v="cricket">Cricket</button>
+      </div>
+      <div class="row" id="outRow">
+        <span>Fin de partie</span>
+        <div class="seg" id="outSeg">
+          <button data-v="double">Double Out</button>
+          <button data-v="simple">Single Out</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Joueurs</h2>
+      <div class="players" id="players"></div>
+      <button class="add" id="addPlayer">+ Ajouter un joueur</button>
+    </div>
+    <div class="card">
+      <h2>Voix (annonces)</h2>
+      <div class="seg" id="voiceSeg">
+        <button data-v="off">Désactivée</button>
+        <button data-v="turn">Score du tour</button>
+        <button data-v="dart">Chaque fléchette</button>
+      </div>
+      <div class="row" id="toneRow"><span>Ton</span><div class="seg" id="toneSeg">
+        <button data-v="pote">Entre potes</button>
+        <button data-v="pro">Classique</button>
+      </div></div>
+      <div class="row" id="voiceRow"><select id="voiceSel"></select><button class="voicebtn" id="voiceTest">Écouter</button></div>
+      <div class="camstat" id="voiceStat" hidden><i></i><span></span></div>
+    </div>
+    <div class="card">
+      <h2>Comptage automatique (caméras)</h2>
+      <div class="seg" id="autoSeg">
+        <button data-v="off">Désactivé</button>
+        <button data-v="on">Activé</button>
+      </div>
+      <div id="autoBox">
+        <div class="row"><span>Code de la cible</span><div class="codebox" id="codeBox"></div><button class="icon-btn" id="newCode" title="Nouveau code">↻</button></div>
+        <div class="camstat" id="camStat"><i></i><span>Recherche du PC des caméras…</span></div>
+        <div class="hint">Sur le PC relié aux webcams, ouvrez <b>cameras.html</b> (même adresse que cette appli) et saisissez ce code.
+          Les fléchettes détectées s'ajoutent toutes seules ; en cas d'erreur, <b>Annuler</b> puis touchez la bonne case.</div>
+      </div>
+    </div>
+    <button class="start" id="startBtn">Commencer</button>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="game" hidden>
+  <div class="stage">
+    <div class="side" id="sideL"></div>
+    <div class="boardwrap">
+      <svg id="board" viewBox="-205 -205 410 410"></svg>
+      <div class="flash" id="flash"></div>
+    </div>
+    <div class="side" id="sideR"></div>
+  </div>
+  <div class="quick" id="quick"></div>
+  <div class="bottom">
+    <div class="hist">
+      <div class="hl"><svg><use href="#i-clock"/></svg><span>Historique</span></div>
+      <div class="hlist" id="hlist"></div>
+    </div>
+    <button class="bbtn" id="undoBtn"><svg><use href="#i-undo"/></svg><span class="t">Annuler</span></button>
+    <button class="bbtn go" id="nextBtn"><span class="t">Tour suivant</span><svg><use href="#i-next"/></svg></button>
+    <button class="bbtn" id="resetBtn"><svg><use href="#i-reset"/></svg><span class="t">Réinitialiser</span></button>
+  </div>
+</section>
+
+<div class="ov" id="ov" hidden><div class="box" id="ovBox"></div></div>
+
+<script src="piper.js"></script>
+<script>
+"use strict";
+/* ================= Helpers ================= */
+const store = {
+  get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const COLORS = ["#2f80ed","#e5484d","#2f9e5b","#e2a52b","#9b6cf0","#14b8a6","#ec4899","#f97316"];
+const QUICK_TOTALS = [26, 41, 45, 60, 81, 100, 140];
+
+/* ================= Setup ================= */
+const newCodeStr = () => Array.from({length:4}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("");
+const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr(), voice:"turn", voiceName:"piper:jessica", tone:"pote" }, store.get("darts-setup") || {});
+if(!setup.voiceName) setup.voiceName = "piper:jessica";   // older saved settings: switch to the natural voice
+
+function renderSetup(){
+  document.querySelectorAll("#gameSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.game));
+  document.querySelectorAll("#outSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.out));
+  $("outRow").hidden = setup.game === "cricket";
+  document.querySelectorAll("#autoSeg button").forEach(b => b.classList.toggle("on", (b.dataset.v === "on") === setup.auto));
+  $("autoBox").hidden = !setup.auto;
+  document.querySelectorAll("#voiceSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.voice));
+  $("voiceRow").hidden = $("toneRow").hidden = setup.voice === "off";
+  document.querySelectorAll("#toneSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.tone));
+  fillVoices();
+  $("codeBox").textContent = setup.code;
+  const box = $("players");
+  box.innerHTML = "";
+  setup.players.forEach((name, i) => {
+    const d = document.createElement("div");
+    d.className = "pl";
+    d.innerHTML = `<span class="dot" style="background:${COLORS[i]}"></span><input value="${esc(name)}" maxlength="16" autocomplete="off" autocapitalize="words">
+      <button class="icon-btn" data-a="up" title="Monter">↑</button>
+      <button class="icon-btn" data-a="del" title="Retirer">×</button>`;
+    d.querySelector("input").addEventListener("input", e => { setup.players[i] = e.target.value; store.set("darts-setup", setup); });
+    d.querySelector('[data-a="up"]').onclick = () => { if(i>0){ [setup.players[i-1], setup.players[i]] = [setup.players[i], setup.players[i-1]]; renderSetup(); } };
+    d.querySelector('[data-a="del"]').onclick = () => { if(setup.players.length>1){ setup.players.splice(i,1); renderSetup(); } };
+    d.querySelector('[data-a="up"]').style.visibility = i ? "visible" : "hidden";
+    box.appendChild(d);
+  });
+  $("addPlayer").hidden = setup.players.length >= 8;
+  $("resumeBtn").hidden = !store.get("darts-game");
+  $("modeTxt").textContent = "Nouvelle partie";
+  store.set("darts-setup", setup);
+}
+$("gameSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.game = b.dataset.v; renderSetup(); } };
+$("outSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.out = b.dataset.v; renderSetup(); } };
+$("voiceSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.voice = b.dataset.v; voiceUnlock(); renderSetup(); voiceBtnState(); piperEnsure(); } };
+$("voiceSel").onchange = e => { setup.voiceName = e.target.value; store.set("darts-setup", setup); piperEnsure(); voiceStatus(); };
+$("toneSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.tone = b.dataset.v; renderSetup(); } };
+$("voiceTest").onclick = () => { voiceUnlock(); const n = (setup.players[0] || "Joueur 1").trim();
+  sayNow(say("s180", {}) + " " + say("nextCo", {name:n, score:141})); };
+$("autoSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.auto = b.dataset.v === "on"; renderSetup(); camRestart(); } };
+$("newCode").onclick = () => { setup.code = newCodeStr(); renderSetup(); camRestart(); };
+$("addPlayer").onclick = () => { setup.players.push("Joueur " + (setup.players.length+1)); renderSetup(); };
+$("startBtn").onclick = () => {
+  const names = setup.players.map((n,i) => n.trim() || ("Joueur "+(i+1)));
+  newGame(setup.game, setup.out, names);
+};
+$("resumeBtn").onclick = () => { const g = store.get("darts-game"); if(g){ G = g; history = []; showGame(); } };
+
+/* ================= Game state ================= */
+const CK = [20,19,18,17,16,15,25];
+let G = null;          // current game
+let history = [];      // undo stack of JSON snapshots
+let pending = null;    // delayed action (end of turn after bust / 3rd dart)
+function later(f, ms){ cancelPending(); pending = {f, t:setTimeout(() => { pending = null; f(); }, ms)}; }
+function cancelPending(){ if(pending){ clearTimeout(pending.t); pending = null; } }
+function flush(){ if(pending){ const f = pending.f; cancelPending(); f(); return true; } return false; }
+
+function newGame(type, out, names, legs, starter){
+  G = {
+    type, out,
+    players: names.map((name,i) => ({
+      name, legs: legs ? legs[i] : 0,
+      score: type === "cricket" ? 0 : +type,
+      marks: {15:0,16:0,17:0,18:0,19:0,20:0,25:0},
+      darts: 0, points: 0,       // for averages
+      first9: [],                // points of the first 3 turns (x01)
+      last: null                 // last finished turn {v, l, bust}
+    })),
+    starter: starter || 0,
+    cur: starter || 0,
+    turn: [],                    // darts of the current turn [{n,m}]
+    turnStart: 0,                // x01 score at start of turn
+    bust: false,
+    round: 1,
+    log: [],                     // history strip [{p, l, v, x}]
+    winner: null
+  };
+  G.turnStart = G.players[G.cur].score;
+  sayNow(say("start", {game: type === "cricket" ? "Cricket" : type, name: G.players[G.cur].name}));
+  history = [];
+  cancelPending();
+  save();
+  showGame();
+}
+function save(){ if(G && G.winner === null) store.set("darts-game", G); else store.del("darts-game"); }
+function snap(){ history.push(JSON.stringify(G)); if(history.length > 300) history.shift(); }
+function log(e){ e.p = G.cur; G.log.push(e); if(G.log.length > 60) G.log.shift(); }
+
+/* ================= Voice (caller) ================= */
+// Two engines: "Jessica", a natural AI voice computed in the iPad (Piper, piper.js, downloaded once into voix/),
+// and the speech synthesis built into Safari, used while Jessica downloads or if it cannot run.
+const synth = window.speechSynthesis || null;
+let voiceMuted = false, voiceUnlocked = false;
+const PIPER = { "piper:jessica": { model:"fr_FR-upmc-medium", speaker:0, label:"Jessica — voix IA naturelle", size:"75 Mo" } };
+let piperState = "idle", piperPct = 0, piperChain = Promise.resolve(), gen = 0, playEnd = 0, sources = [], actx = null;
+const pcmCache = new Map();
+const piperSel = () => PIPER[setup.voiceName] || null;
+function piperEnsure(){
+  const pv = piperSel();
+  if(!pv || piperState === "loading" || piperState === "ready" || !window.PiperTTS || setup.voice === "off") return;
+  piperState = "loading"; piperPct = 0; voiceStatus();
+  PiperTTS.load(pv.model, (got, total) => { if(total){ const p = Math.floor(got * 100 / total); if(p !== piperPct){ piperPct = p; voiceStatus(); } } })
+    .then(() => { piperState = "ready"; voiceStatus(); setTimeout(piperWarm, 1500); })
+    .catch(() => { piperState = "error"; voiceStatus(); });
+}
+// precompute the fixed sentences of the phrase book in the background, one at a time so live speech never waits long
+function piperWarm(){
+  const pv = piperSel(); if(!pv || piperState !== "ready") return;
+  const todo = [...new Set(Object.values(PHRASES[setup.tone] || PHRASES.pote).flat()
+    .flatMap(t => t.split(/(?<=[.!?…])\s+/)).filter(t => t && !t.includes("{") && !pcmCache.has(t)))].slice(0, 60);
+  const step = () => {
+    const t = todo.shift(); if(!t || piperState !== "ready") return;
+    piperChain = piperChain.then(async () => {
+      if(!pcmCache.has(t)) pcmCache.set(t, await PiperTTS.synth(pv.model, t, { speaker:pv.speaker, speed:1.05 }));
+    }).catch(() => {});
+    piperChain.then(() => setTimeout(step, 150));
+  };
+  step();
+}
+function voiceStatus(){
+  const el = $("voiceStat"); if(!el) return;
+  const pv = piperSel();
+  el.hidden = !pv || setup.voice === "off";
+  el.className = "camstat " + (piperState === "ready" ? "ok" : "warn");
+  el.querySelector("span").textContent =
+    piperState === "ready" ? "Jessica est prête (fonctionne hors ligne)" :
+    piperState === "loading" ? `Téléchargement de Jessica… ${piperPct} % (${pv ? pv.size : ""}, une seule fois). En attendant : voix de l'iPad.` :
+    piperState === "error" ? "Jessica n'a pas pu se charger (dossier voix/ manquant ?). Voix de l'iPad utilisée." : "";
+}
+function audioUnlock(){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!actx && AC) actx = new AC();
+  if(actx && actx.state !== "running") actx.resume().catch(() => {});
+}
+document.addEventListener("pointerdown", audioUnlock, { capture:true });
+function playPcm(a){
+  audioUnlock(); if(!actx) return;
+  const buf = actx.createBuffer(1, a.pcm.length, a.sampleRate);
+  buf.getChannelData(0).set(a.pcm);
+  const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+  const t = Math.max(actx.currentTime + 0.03, playEnd);
+  src.start(t); playEnd = t + buf.duration;
+  sources.push(src); src.onended = () => { sources = sources.filter(x => x !== src); };
+}
+function piperStop(){ gen++; sources.forEach(s => { try{ s.stop(); }catch(e){} }); sources = []; playEnd = 0; }
+// each sentence is played as soon as it is computed, while the next one is being computed
+function piperSay(text, cut){
+  const pv = piperSel();
+  if(cut) piperStop();
+  const my = gen, parts = text.split(/(?<=[.!?…])\s+/).map(x => x.trim()).filter(Boolean);
+  piperChain = piperChain.then(async () => {
+    for(const part of parts){
+      if(my !== gen) return;
+      let a = pcmCache.get(part);
+      if(!a){
+        a = await PiperTTS.synth(pv.model, part, { speaker:pv.speaker, speed:1.05 });
+        pcmCache.set(part, a);
+        if(pcmCache.size > 200) pcmCache.delete(pcmCache.keys().next().value);
+      }
+      if(my !== gen) return;
+      playPcm(a);
+    }
+  }).catch(() => {});
+}
+function frVoices(){
+  if(!synth) return [];
+  return synth.getVoices().filter(v => /^fr/i.test(v.lang)).sort((a,b) => (b.localService - a.localService) || (/fr-FR/i.test(b.lang) - /fr-FR/i.test(a.lang)));
+}
+function pickVoice(){
+  const vs = frVoices();
+  return vs.find(v => v.name === setup.voiceName) || vs.find(v => /Thomas|Amélie|Amelie|Audrey|Google/i.test(v.name)) || vs[0] || null;
+}
+function fillVoices(){
+  const sel = $("voiceSel"); if(!sel) return;
+  const vs = frVoices(), cur = pickVoice();
+  sel.innerHTML = Object.entries(PIPER).map(([k,v]) => `<option value="${k}">${esc(v.label)}</option>`).join("") +
+    (vs.length ? `<optgroup label="Voix de l'iPad">${vs.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join("")}</optgroup>` : "");
+  sel.value = piperSel() ? setup.voiceName : cur ? cur.name : Object.keys(PIPER)[0];
+  voiceStatus();
+}
+if(synth && "onvoiceschanged" in synth) synth.onvoiceschanged = fillVoices;
+// iPad: speech must first be started by a tap, after that the camera can trigger it too
+function voiceUnlock(){
+  audioUnlock();
+  if(!synth || voiceUnlocked) return;
+  voiceUnlocked = true;
+  const u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u);
+}
+document.addEventListener("pointerdown", voiceUnlock, { once:true, capture:true });
+const voiceOn = () => setup.voice !== "off" && !voiceMuted;
+function speak(text, cut){
+  if(!voiceOn() || !text) return;
+  if(piperSel()){
+    if(piperState === "ready") return piperSay(text, cut);
+    piperEnsure();
+  }
+  if(!synth) return;
+  if(cut) synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "fr-FR"; u.rate = 1.05;
+  const v = pickVoice(); if(v) u.voice = v;
+  synth.speak(u);
+}
+const sayNow = t => speak(t, true);     // replaces whatever is being said
+const sayNext = t => speak(t, false);   // waits for the current sentence
+// Phrase book: several lines per situation, picked at random. "pote" = friends (tutoiement), "pro" = classic caller.
+const PHRASES = {
+  pote: {
+    start:   ["C'est parti pour un {game} ! {name}, à toi l'honneur.", "Allez, on y va ! {name}, tu commences.", "Que le meilleur gagne ! {name}, c'est toi qui ouvres.", "{game}, c'est parti ! {name}, montre-nous ce que tu sais faire."],
+    s180:    ["Cent quatre-vingts ! Mais t'es qui ?!", "Cent quatre-vingts ! Le patron est dans la place !", "Cent quatre-vingts ! Respect total.", "Cent quatre-vingts ! On se calme, on se calme !"],
+    s140:    ["{s} ! Énorme !", "{s} ! Ça envoie du lourd.", "{s}, magnifique !", "{s} ! T'es en feu ce soir."],
+    s100:    ["{s}, la tonne ! Bien joué.", "{s}, joli tour !", "{s}, propre !"],
+    s60:     ["{s}, pas mal.", "{s}, ça passe.", "{s}, correct.", "{s}."],
+    s26:     ["Vingt-six… le fameux tour de bistrot !", "Vingt-six, le grand classique !", "Vingt-six. Un, vingt, cinq… on connaît la chanson."],
+    sLow:    ["{s}… on fera mieux la prochaine fois.", "Seulement {s}, allez, concentre-toi !", "{s}, petit tour.", "{s}. Échauffement, sûrement."],
+    s0:      ["Zéro ! Rien du tout…", "Zéro pointé, aïe !", "Zéro. La cible est pourtant grande !", "Trois fléchettes, zéro point. Chapeau l'artiste."],
+    bust:    ["Bust ! Trop gourmand !", "Bust ! Retour à la case départ.", "Bust ! Fallait viser plus petit.", "Bust ! Aïe aïe aïe."],
+    next:    ["À toi {name}, il te reste {score}.", "{name}, ton tour. Il te reste {score}.", "{name}, à toi de jouer. {score}."],
+    nextCo:  ["{name}, il te reste {score}, c'est jouable !", "{name}, {score} pour finir. Tu peux le faire !", "{name}, plus que {score}, on y croit !"],
+    nextCk:  ["À toi {name}.", "{name}, ton tour.", "{name}, vas-y."],
+    win:     ["Check-out ! {name} remporte la manche en {darts} fléchettes. Bravo !", "Et c'est gagné pour {name} ! Tournée générale ?", "{name} plie l'affaire ! Bien joué !"],
+    winBig:  ["Check-out à {co} ! {name}, c'est du grand art !", "Quel finish ! {co} pour {name}, chapeau bas !"],
+    winCk:   ["{name} gagne la manche ! Bravo !", "Et c'est {name} qui l'emporte !"],
+    marks0:  ["Rien de rien.", "Pas une marque…"],
+    marks1:  ["Une petite marque.", "Une marque, c'est un début."],
+    marks:   ["{m} marques.", "{m} marques, pas mal."],
+    marksBig:["{m} marques, superbe !", "{m} marques ! Joli !"],
+    bull:    ["Bull ! Dans le mille !", "Bull ! En plein cœur !"],
+    miss:    ["Raté !", "À côté !", "Dans le mur !"]
+  },
+  pro: {
+    start:   ["Partie de {game}. Le jeu commence. {name}, à vous."],
+    s180:    ["Cent quatre-vingts !"],
+    s140: ["{s}."], s100: ["{s}."], s60: ["{s}."], s26: ["{s}."], sLow: ["{s}."], s0: ["Zéro."],
+    bust:    ["Bust !"],
+    next:    ["À {name}, {score}."],
+    nextCo:  ["{name}, il vous reste {score}."],
+    nextCk:  ["À {name}."],
+    win:     ["Check-out ! {name} gagne la manche, en {darts} fléchettes."],
+    winBig:  ["Check-out à {co} ! {name} gagne la manche, en {darts} fléchettes."],
+    winCk:   ["{name} gagne la manche !"],
+    marks0: ["Aucune marque."], marks1: ["Une marque."], marks: ["{m} marques."], marksBig: ["{m} marques."],
+    bull: ["Bull"], miss: ["Raté"]
+  }
+};
+const lastLine = {};
+function say(key, vars){
+  const list = (PHRASES[setup.tone] || PHRASES.pote)[key] || [""];
+  let i = Math.floor(Math.random() * list.length);
+  if(list.length > 1 && i === lastLine[key]) i = (i + 1) % list.length;   // never the same line twice in a row
+  lastLine[key] = i;
+  return list[i].replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? vars[k] : "");
+}
+const dartWords = d => d.n === 0 ? say("miss", {}) : d.n === 25 ? (d.m === 2 ? say("bull", {}) : "25") : (d.m === 3 ? "Triple " : d.m === 2 ? "Double " : "") + d.n;
+function turnWords(s){
+  const key = s === 180 ? "s180" : s >= 140 ? "s140" : s >= 100 ? "s100" : s >= 60 ? "s60" : s === 26 ? "s26" : s > 0 ? "sLow" : "s0";
+  return say(key, {s});
+}
+function announceNext(){
+  const q = G.players[G.cur];
+  if(G.type === "cricket") return say("nextCk", {name:q.name});
+  const co = q.score <= 170 && checkout(q.score, 3, G.out === "double");
+  return say(co ? "nextCo" : "next", {name:q.name, score:q.score});
+}
+function voiceBtnState(){
+  const b = $("voiceBtn");
+  b.hidden = setup.voice === "off";
+  b.classList.toggle("muted", voiceMuted);
+  b.title = voiceMuted ? "Voix coupée (toucher pour réactiver)" : "Voix (toucher pour couper)";
+}
+
+/* ================= Rules ================= */
+const val = d => d.n * d.m;
+const lbl = d => d.n === 0 ? "Raté" : d.n === 25 ? (d.m === 2 ? "Bull" : "25") : (d.m === 3 ? "T" : d.m === 2 ? "D" : "S") + d.n;
+
+function throwDart(n, m, pos, fromCam){
+  if(!G || pending || G.winner !== null || G.turn.length >= 3) return;
+  if(n === 0) m = 1;
+  snap();
+  const p = G.players[G.cur];
+  const d = {n, m};
+  if(pos) d.pos = [Math.round(pos[0]*10)/10, Math.round(pos[1]*10)/10];
+  if(fromCam) d.cam = 1;
+  G.turn.push(d);
+  p.darts++;
+
+  if(G.type === "cricket"){
+    const pts = applyCricket(p, d);
+    log({l: lbl(d), v: pts ? "+" + pts : (CK.includes(n) ? "✕".repeat(Math.min(m,3)) : "–"), x: n === 0});
+    flash(lbl(d));
+    if(setup.voice === "dart") sayNow(dartWords(d));
+    if(checkCricketWin()) return finishLeg();
+  } else {
+    const v = val(d);
+    const left = p.score - v;
+    const dbl = G.out === "double";
+    const bust = left < 0 || (dbl && left === 1) || (dbl && left === 0 && m !== 2);
+    log({l: lbl(d), v, x: n === 0});
+    if(bust){
+      p.points -= (G.turnStart - p.score);   // cancel this turn's points
+      p.score = G.turnStart;
+      p.darts += 3 - G.turn.length;
+      G.bust = true;
+      log({l: "Bust", v: 0, x: true});
+      render();
+      flash("Bust !", "bad");
+      sayNow(say("bust", {}));
+      return later(() => endTurn(true), 1000);
+    }
+    p.score = left;
+    p.points += v;
+    flash(lbl(d));
+    if(setup.voice === "dart" && left !== 0) sayNow(dartWords(d));
+    if(left === 0){ G.winner = G.cur; return finishLeg(); }
+  }
+  render();
+  save();
+  if(G.turn.length === 3) later(() => endTurn(), 800);
+}
+
+function applyCricket(p, d){
+  if(!CK.includes(d.n)) return 0;
+  const before = p.marks[d.n];
+  const total = before + d.m;
+  p.marks[d.n] = Math.min(3, total);
+  const extra = total - Math.max(3, before);
+  p.points += d.m;  // marks, for the marks-per-round stat
+  if(extra > 0 && G.players.some(o => o !== p && o.marks[d.n] < 3)){
+    p.score += extra * d.n;
+    return extra * d.n;
+  }
+  return 0;
+}
+function checkCricketWin(){
+  const p = G.players[G.cur];
+  if(CK.every(n => p.marks[n] >= 3) && G.players.every(o => o.score <= p.score)){ G.winner = G.cur; return true; }
+  return false;
+}
+
+function turnSummary(){
+  const p = G.players[G.cur];
+  const t = G.turn;
+  const l = t.length === 1 && t[0].total ? "" : t.map(lbl).join(" ");
+  if(G.type === "cricket") return { v: t.reduce((a,d) => a + (CK.includes(d.n) ? d.m : 0), 0) + "✕", l };
+  return { v: G.bust ? "Bust" : G.turnStart - p.score, l, bust: G.bust };
+}
+
+function endTurn(skipSnap){
+  if(!G || G.winner !== null) return;
+  if(!skipSnap) snap();
+  const p = G.players[G.cur];
+  const scored = G.turnStart - p.score, wasBust = G.bust;
+  const marks = G.turn.reduce((a,d) => a + (CK.includes(d.n) ? d.m : 0), 0);
+  if(G.turn.length) p.last = turnSummary();
+  if(G.type !== "cricket" && p.first9.length < 3) p.first9.push(G.turnStart - p.score);
+  G.turn = [];
+  G.bust = false;
+  G.cur = (G.cur + 1) % G.players.length;
+  if(G.cur === G.starter) G.round++;
+  G.turnStart = G.players[G.cur].score;
+  save();
+  render();
+  if(G.type === "cricket") sayNext(say(marks === 0 ? "marks0" : marks === 1 ? "marks1" : marks >= 5 ? "marksBig" : "marks", {m:marks}) + " " + announceNext());
+  else sayNext((wasBust ? "" : turnWords(scored) + " ") + announceNext());
+}
+
+function finishLeg(){
+  const w = G.players[G.winner];
+  w.last = turnSummary();
+  w.legs++;
+  store.del("darts-game");
+  render();
+  flash(G.type === "cricket" ? "Gagné !" : "Check-out !", "good");
+  sayNow(G.type === "cricket" ? say("winCk", {name:w.name}) : say(G.turnStart >= 100 ? "winBig" : "win", {name:w.name, darts:w.darts, co:G.turnStart}));
+  setTimeout(showEnd, 1000);
+}
+
+/* total-of-turn entry (x01 only) */
+function submitTotal(v){
+  if(!G || pending || G.winner !== null || G.type === "cricket") return false;
+  if(G.turn.length){ flash("Finis le tour"); return false; }
+  if(v > 180 || [163,166,169,172,173,175,176,178,179].includes(v)) return false;
+  snap();
+  const p = G.players[G.cur];
+  const left = p.score - v;
+  const dbl = G.out === "double";
+  p.darts += 3;
+  G.turn = [{n:v, m:1, total:true}];
+  log({l: "Total", v});
+  if(left < 0 || (dbl && left === 1)){
+    G.bust = true;
+    log({l: "Bust", v: 0, x: true});
+    render(); flash("Bust !", "bad"); sayNow(say("bust", {}));
+    later(() => endTurn(true), 1000);
+    return true;
+  }
+  p.score = left;
+  p.points += v;
+  if(left === 0){ G.winner = G.cur; finishLeg(); return true; }
+  flash(String(v));
+  endTurn(true);
+  return true;
+}
+
+function undo(){
+  if(!history.length) return;
+  if(synth) synth.cancel();
+  piperStop();
+  cancelPending();
+  G = JSON.parse(history.pop());
+  $("ov").hidden = true;
+  save();
+  render();
+}
+
+/* ================= Checkout suggestions ================= */
+const SINGLES = []; for(let i=20;i>=1;i--) SINGLES.push({n:i,m:1});
+const TRIPLES = []; for(let i=20;i>=1;i--) TRIPLES.push({n:i,m:3});
+const DOUBLES_PREF = [20,16,8,18,12,10,4,14,6,2,19,17,15,13,11,9,7,5,3,1].map(n => ({n,m:2})).concat([{n:25,m:2}]);
+const SETUP = SINGLES.concat([{n:25,m:1}], TRIPLES, [{n:25,m:2}]);
+const ALL = TRIPLES.concat(SINGLES, [{n:25,m:1},{n:25,m:2}], DOUBLES_PREF.filter(d => d.n !== 25));
+const coCache = {};
+function checkout(score, darts, dbl){
+  const key = score+"/"+darts+"/"+dbl;
+  if(key in coCache) return coCache[key];
+  let res = null;
+  const finishers = dbl ? DOUBLES_PREF : ALL;
+  if(score > 0 && darts >= 1){
+    const f = finishers.find(f => val(f) === score); if(f) res = [f];
+    if(!res && darts >= 2){
+      for(const f of finishers){ const s = SETUP.find(x => val(x) === score - val(f)); if(s){ res = [s, f]; break; } }
+    }
+    if(!res && darts >= 3){
+      for(const a of TRIPLES.concat([{n:25,m:2},{n:25,m:1}], SINGLES)){
+        const rest = score - val(a);
+        if(rest < (dbl ? 2 : 1)) continue;
+        const r = checkout(rest, 2, dbl);
+        if(r){ res = [a].concat(r); break; }
+      }
+    }
+  }
+  return coCache[key] = res;
+}
+
+/* ================= Dartboard ================= */
+const ORDER = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+// Rings are widened compared to a real board so they are easy to hit with a finger.
+const R = { bull:15, obull:32, tIn:96, tOut:122, dIn:146, dOut:172, rim:200 };
+function pt(r, a){ const t = a * Math.PI / 180; return [(r*Math.cos(t)).toFixed(2), (r*Math.sin(t)).toFixed(2)]; }
+function sector(r1, r2, a1, a2){
+  const [x1,y1] = pt(r2,a1), [x2,y2] = pt(r2,a2), [x3,y3] = pt(r1,a2), [x4,y4] = pt(r1,a1);
+  return `M${x1} ${y1}A${r2} ${r2} 0 0 1 ${x2} ${y2}L${x3} ${y3}A${r1} ${r1} 0 0 0 ${x4} ${y4}Z`;
+}
+function buildBoard(){
+  let s = `<circle r="${R.rim+3}" fill="#22272e"/><circle class="hitz" r="${R.rim}" fill="#111418" data-n="0" data-m="1"/>`;
+  ORDER.forEach((n, i) => {
+    const a1 = -90 + i*18 - 9, a2 = a1 + 18;
+    const dark = i % 2 === 0;
+    const single = dark ? "var(--b-black)" : "var(--b-cream)";
+    const ring = dark ? "var(--b-red)" : "var(--b-green)";
+    const st = 'stroke="#0b0d10" stroke-width="1"';
+    s += `<path d="${sector(R.obull,R.tIn,a1,a2)}" fill="${single}" ${st} data-n="${n}" data-m="1"/>`;
+    s += `<path d="${sector(R.tIn,R.tOut,a1,a2)}" fill="${ring}" ${st} data-n="${n}" data-m="3"/>`;
+    s += `<path d="${sector(R.tOut,R.dIn,a1,a2)}" fill="${single}" ${st} data-n="${n}" data-m="1"/>`;
+    s += `<path d="${sector(R.dIn,R.dOut,a1,a2)}" fill="${ring}" ${st} data-n="${n}" data-m="2"/>`;
+    const [tx,ty] = pt(186, -90 + i*18);
+    s += `<text x="${tx}" y="${ty}">${n}</text>`;
+  });
+  s += `<circle class="hitz" r="${R.obull}" fill="var(--b-green)" stroke="#0b0d10" data-n="25" data-m="1"/>`;
+  s += `<circle class="hitz" r="${R.bull}" fill="var(--b-red)" stroke="#0b0d10" data-n="25" data-m="2"/>`;
+  s += `<circle r="${R.dOut}" fill="none" stroke="#0b0d10" stroke-width="2" pointer-events="none"/>`;
+  s += `<g id="marks"></g>`;
+  $("board").innerHTML = s;
+}
+// real board millimetres -> drawn board (whose rings are widened), ring by ring
+const MM = [[0,0],[6.35,15],[15.9,32],[99,96],[107,122],[162,146],[170,172],[230,200]];
+function uiPos(x, y){
+  const r = Math.hypot(x, y); if(!r) return [0,0];
+  let k = MM.length - 1;
+  for(let i=1;i<MM.length;i++) if(r <= MM[i][0]){ k = i; break; }
+  const [r0,u0] = MM[k-1], [r1,u1] = MM[k];
+  const u = Math.min(200, u0 + (r - r0) * (u1 - u0) / (r1 - r0));
+  return [x * u / r, y * u / r];
+}
+$("board").addEventListener("click", e => {
+  const el = e.target.closest("[data-n]"); if(!el) return;
+  el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 220);
+  const svg = $("board"), pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+  throwDart(+el.dataset.n, +el.dataset.m, +el.dataset.n ? [q.x, q.y] : null);
+});
+
+let flashT;
+function flash(msg, kind){
+  const f = $("flash");
+  f.textContent = msg;
+  f.className = "flash show" + (kind ? " " + kind : "");
+  clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove("show"), kind ? 950 : 550);
+}
+
+/* ================= Rendering ================= */
+function showGame(){
+  $("setup").hidden = true;
+  $("game").hidden = false;
+  $("ov").hidden = true;
+  render();
+}
+function showSetup(){
+  $("game").hidden = true;
+  $("ov").hidden = true;
+  $("setup").hidden = false;
+  renderSetup();
+}
+
+function marksSvg(n){
+  const s = 'stroke="currentColor" stroke-width="3.4" stroke-linecap="round" fill="none"';
+  let g = "";
+  if(n >= 1) g += `<line x1="9" y1="25" x2="25" y2="9" ${s}/>`;
+  if(n >= 2) g += `<line x1="9" y1="9" x2="25" y2="25" ${s}/>`;
+  if(n >= 3) g += `<circle cx="17" cy="17" r="13.5" ${s}/>`;
+  return `<svg viewBox="0 0 34 34" style="color:${n>=3?'var(--c)':'var(--ink)'}">${g}</svg>`;
+}
+
+function cardHtml(p, i){
+  const ck = G.type === "cricket";
+  const isCur = i === G.cur && G.winner === null;
+  let last;
+  if(isCur && G.turn.length){
+    const t = turnSummary();
+    last = { title:"Ce tour", ...t };
+  } else {
+    last = { title:"Dernier lancer", ...(p.last || {v:"–", l:""}) };
+  }
+  let extra = "";
+  if(ck){
+    extra = `<div class="ckm">${CK.map(n => `<div class="${G.players.every(o => o.marks[n]>=3)?'dead':''}">${n===25?"B":n}${marksSvg(p.marks[n])}</div>`).join("")}</div>`;
+  } else if(p.score <= 170 && G.winner === null){
+    const c = checkout(p.score, isCur ? 3 - G.turn.length : 3, G.out === "double");
+    if(c) extra = `<div class="checkout"><small>Finir :</small>${c.map(lbl).join(" · ")}</div>`;
+  }
+  return `<div class="pcard ${isCur?'cur':''}" style="--c:${COLORS[i]}">
+    ${p.legs ? `<span class="legs">${p.legs} ${p.legs>1?"manches":"manche"}</span>` : ""}
+    <div class="pill">${esc(p.name)}</div>
+    <div class="score num">${p.score}</div>
+    <div class="sep"></div>
+    <div class="lastlbl">${last.title}</div>
+    <div class="last ${last.bust?'bust':''}"><b class="num">${last.v}</b>${last.l ? `<span>${esc(last.l)}</span>` : ""}</div>
+    ${extra}
+  </div>`;
+}
+
+function render(){
+  if(!G) return;
+  const ck = G.type === "cricket";
+  $("modeTxt").textContent = (ck ? "Cricket" : G.type + " • " + (G.out === "double" ? "Double Out" : "Single Out")) + " • Tour " + G.round;
+
+  // players: even indexes on the left, odd on the right (2 players → one each side)
+  const L = [], Rt = [];
+  G.players.forEach((p,i) => (i % 2 === 0 ? L : Rt).push(cardHtml(p,i)));
+  $("sideL").innerHTML = L.join(""); $("sideR").innerHTML = Rt.join("");
+  $("sideL").classList.toggle("many", L.length > 1);
+  $("sideR").classList.toggle("many", Rt.length > 1);
+
+  // quick row
+  const q = $("quick");
+  if(ck){
+    q.innerHTML = `<button class="txt" data-q="miss">Raté</button><button data-q="25">25</button><button data-q="50">Bull</button>`;
+  } else {
+    q.innerHTML = `<button class="txt" data-q="miss">Raté</button>` +
+      QUICK_TOTALS.map(v => `<button class="num ${G.lastQuick===v?'on':''}" data-q="t${v}">${v}</button>`).join("") +
+      `<button data-q="more" title="Autre total">···</button>`;
+    q.querySelectorAll('[data-q^="t"],[data-q="more"]').forEach(b => b.disabled = G.turn.length > 0);
+  }
+
+  // history strip (newest on the right)
+  const hl = $("hlist");
+  hl.innerHTML = G.log.length
+    ? G.log.map(e => `<div class="hi ${e.x?'x':''}" style="--c:${COLORS[e.p]}"><i></i><div><b>${esc(e.l)}</b><span class="num">${esc(e.v)}</span></div></div>`).join("")
+    : `<span class="hempty">Touchez la cible pour marquer</span>`;
+  hl.scrollLeft = hl.scrollWidth;
+
+  $("marks").innerHTML = G.turn.filter(d => d.pos).map(d => `<circle class="mark ${d.cam?'cam':''}" cx="${d.pos[0]}" cy="${d.pos[1]}" r="7"/>`).join("");
+  $("undoBtn").disabled = !history.length;
+  $("nextBtn").querySelector(".t").textContent = G.turn.length ? "Tour suivant" : "Passer";
+}
+
+function showEnd(){
+  if(!G || G.winner === null) return;
+  const w = G.players[G.winner];
+  const ck = G.type === "cricket";
+  const rows = G.players.map((p,i) => {
+    const avg = p.darts ? (p.points/p.darts*3).toFixed(1) : "–";
+    const f9 = p.first9.length ? (p.first9.reduce((a,b)=>a+b,0)/p.first9.length).toFixed(1) : "–";
+    const nm = `<span style="color:${COLORS[i]}">●</span> ${esc(p.name)}`;
+    return ck
+      ? `<tr><td>${nm}</td><td>${p.score}</td><td>${avg}</td><td>${p.legs}</td></tr>`
+      : `<tr><td>${nm}</td><td>${p.score}</td><td>${avg}</td><td>${f9}</td><td>${p.darts}</td><td>${p.legs}</td></tr>`;
+  }).join("");
+  const head = ck ? `<tr><th>Joueur</th><th>Points</th><th>Marques/tour</th><th>Manches</th></tr>`
+                  : `<tr><th>Joueur</th><th>Reste</th><th>Moyenne</th><th>9 prem.</th><th>Fléch.</th><th>Manches</th></tr>`;
+  $("ovBox").innerHTML = `<h2>🏆 ${esc(w.name)}</h2>
+    <p>${ck ? "remporte la manche de Cricket" : "termine en " + w.darts + " fléchettes"}</p>
+    <table class="num">${head}${rows}</table>
+    <div class="btns">
+      <button class="ok" id="againBtn">Manche suivante</button>
+      <button id="undoEndBtn">Annuler la dernière fléchette</button>
+      <button id="newBtn">Nouvelle partie</button>
+    </div>`;
+  $("ov").hidden = false;
+  $("againBtn").onclick = () => newGame(G.type, G.out, G.players.map(p => p.name), G.players.map(p => p.legs), (G.starter + 1) % G.players.length);
+  $("undoEndBtn").onclick = undo;
+  $("newBtn").onclick = () => { G = null; showSetup(); };
+}
+
+function showTotalPad(){
+  let buf = "";
+  $("ovBox").innerHTML = `<h2>Total du tour</h2><p>${esc(G.players[G.cur].name)} · 3 fléchettes</p>
+    <div class="tdisp num" id="tdisp">0</div>
+    <div class="tpad">${["1","2","3","4","5","6","7","8","9","⌫","0","OK"].map(k => `<button class="${k==="OK"?"ok":""}" data-k="${k}">${k}</button>`).join("")}</div>
+    <div class="btns"><button id="tCancel">Fermer</button></div>`;
+  $("ov").hidden = false;
+  $("ovBox").querySelector(".tpad").onclick = e => {
+    const b = e.target.closest("button"); if(!b) return;
+    const k = b.dataset.k;
+    if(k === "OK"){
+      const v = parseInt(buf || "0", 10);
+      $("ov").hidden = true;
+      if(!submitTotal(v)){ $("ov").hidden = false; const t = $("tdisp"); t.classList.add("err"); setTimeout(() => t.classList.remove("err"), 500); }
+      return;
+    }
+    if(k === "⌫") buf = buf.slice(0,-1);
+    else if(buf.length < 3) buf = (buf + k).replace(/^0+(?=\d)/, "");
+    $("tdisp").textContent = buf || "0";
+  };
+  $("tCancel").onclick = () => { $("ov").hidden = true; };
+}
+
+function confirmBox(title, text, okLabel, onOk){
+  $("ovBox").innerHTML = `<h2>${title}</h2><p>${text}</p><div class="btns"><button class="ok" id="cOk">${okLabel}</button><button id="cNo">Annuler</button></div>`;
+  $("ov").hidden = false;
+  $("cOk").onclick = () => { $("ov").hidden = true; onOk(); };
+  $("cNo").onclick = () => { $("ov").hidden = true; };
+}
+
+/* ================= Events ================= */
+$("quick").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b || b.disabled) return;
+  const q = b.dataset.q;
+  if(q === "miss") throwDart(0, 1);
+  else if(q === "25") throwDart(25, 1);
+  else if(q === "50") throwDart(25, 2);
+  else if(q === "more") showTotalPad();
+  else if(q[0] === "t"){ const v = +q.slice(1); if(submitTotal(v)) G.lastQuick = v; render(); }
+});
+$("undoBtn").onclick = undo;
+function nextTurn(){
+  if(!G || G.winner !== null || flush()) return;
+  snap();
+  G.players[G.cur].darts += 3 - G.turn.length;   // darts not entered count as missed
+  endTurn(true);
+}
+$("nextBtn").onclick = nextTurn;
+$("resetBtn").onclick = () => confirmBox("Réinitialiser ?", "La manche en cours repart de zéro. Les manches gagnées sont conservées.", "Réinitialiser",
+  () => newGame(G.type, G.out, G.players.map(p => p.name), G.players.map(p => p.legs), G.starter));
+$("gearBtn").onclick = () => { if(!$("game").hidden){ save(); showSetup(); } };
+
+const fsEl = document.documentElement;
+const fsReq = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen;
+const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+if(!fsReq || standalone) $("fullBtn").hidden = true;
+$("fullBtn").onclick = () => {
+  const cur = document.fullscreenElement || document.webkitFullscreenElement;
+  if(cur) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else fsReq.call(fsEl);
+};
+
+/* keyboard shortcuts (iPad keyboard): Cmd/Ctrl+Z to undo, Enter for next turn */
+document.addEventListener("keydown", e => {
+  if($("game").hidden || e.target.tagName === "INPUT" || !$("ov").hidden) return;
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); }
+  else if(e.key === "Enter") $("nextBtn").click();
+});
+
+/* ================= Cameras (automatic scoring) ================= */
+// The PC with the webcams (cameras.html) posts detected darts to api.php; the iPad polls it with the shared code.
+let camLast = -1, camTimer = null, camPaused = false, camSeen = null, camFails = 0;
+const camChan = "BroadcastChannel" in window ? new BroadcastChannel("darts-cam") : null;
+if(camChan) camChan.onmessage = e => { if(setup.auto){ camSeen = Date.now(); camEvent(e.data); } };
+
+function camEvent(ev){
+  if(!ev || ev.t === "hb" || camPaused) return;
+  if(!G || $("game").hidden || !$("ov").hidden) return;
+  if(ev.t === "dart") throwDart(ev.n, ev.m, typeof ev.x === "number" ? uiPos(ev.x, ev.y) : null, true);
+  else if(ev.t === "takeout" && (G.turn.length || pending)) nextTurn();
+}
+async function camPoll(){
+  if(!setup.auto || !setup.code) return;
+  try{
+    const r = await fetch("api.php?code=" + encodeURIComponent(setup.code) + "&since=" + camLast, { cache:"no-store" });
+    if(!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    if(camLast >= 0) d.events.forEach(camEvent);
+    camLast = d.last;
+    if(d.hb !== null && d.hb < 15) camSeen = Date.now();
+    camFails = 0;
+  }catch(e){ camFails++; }
+  camStatus();
+}
+function camStatus(){
+  const on = setup.auto, ok = camSeen && Date.now() - camSeen < 15000;
+  const txt = !on ? "" : camFails > 2 ? "Serveur injoignable : l'appli doit être sur le site avec api.php" : ok ? "PC des caméras connecté" : "Recherche du PC des caméras…";
+  const kind = ok && camFails <= 2 ? "ok" : "warn";
+  $("camStat").className = "camstat " + kind;
+  $("camStat").querySelector("span").textContent = txt;
+  const b = $("camBtn");
+  b.hidden = !on;
+  b.className = "hbtn camind " + kind + (camPaused ? " pause" : "");
+  b.title = camPaused ? "Caméras en pause (toucher pour reprendre)" : txt;
+}
+function camRestart(){
+  clearInterval(camTimer); camLast = -1; camFails = 0; camSeen = null;
+  if(setup.auto){ camPoll(); camTimer = setInterval(camPoll, 700); }
+  camStatus();
+}
+$("voiceBtn").onclick = () => { voiceMuted = !voiceMuted; if(voiceMuted){ if(synth) synth.cancel(); piperStop(); } flash(voiceMuted ? "Voix coupée" : "Voix activée"); voiceBtnState(); };
+$("camBtn").onclick = () => { camPaused = !camPaused; flash(camPaused ? "Caméras en pause" : "Caméras actives"); camStatus(); };
+
+/* boot */
+camRestart();
+voiceBtnState();
+piperEnsure();
+buildBoard();
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(function(){}); }
+const saved = store.get("darts-game");
+if(saved){ G = saved; showGame(); } else showSetup();
+</script>
+</body>
+</html>

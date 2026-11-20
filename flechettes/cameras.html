@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Darts Score · Caméras</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0d1014; --panel:#171c22; --panel-2:#1f262e; --line:#2a323c;
+  --ink:#f3f4f6; --ink-soft:#9aa3ad; --ink-faint:#5d6773;
+  --accent:#3b8cff; --ok:#2fbf71; --warn:#e2a52b; --bad:#e5484d;
+  --c0:#3b8cff; --c1:#e5484d; --c2:#2fbf71;
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 var(--f)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:9px 14px;font-weight:600}
+button:hover{border-color:var(--ink-faint)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.on{background:var(--ok);border-color:var(--ok);color:#06210f}
+button:disabled{opacity:.4;cursor:default}
+select,input[type=text]{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+[hidden]{display:none!important}
+
+header{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:20px;margin:0;font-weight:700;margin-right:auto}
+header h1 span{color:var(--ink-soft);font-weight:500}
+.field{display:flex;align-items:center;gap:8px;color:var(--ink-soft)}
+.field input{width:110px;text-transform:uppercase;font-weight:700;letter-spacing:2px;color:var(--ink)}
+.state{display:flex;align-items:center;gap:8px;font-weight:600;min-width:220px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ink-faint);flex:none}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+
+main{padding:16px 20px 30px;display:grid;gap:16px}
+.cams{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.cam{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;border-top:3px solid var(--cc)}
+.cam .top{display:flex;gap:8px;align-items:center}
+.cam .top b{color:var(--cc);white-space:nowrap}
+.cam .top select{flex:1;min-width:0}
+.view{position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:16/9}
+.view canvas{width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+.view .empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-faint);text-align:center;padding:10px}
+.cam .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cam .msg{font-size:14px;color:var(--ink-soft);min-height:40px;display:flex;gap:10px;align-items:center}
+.cam .msg svg{flex:none;width:56px;height:56px}
+.cam .msg.warn{color:var(--warn)}
+.cam .meter{height:6px;border-radius:3px;background:var(--panel-2);overflow:hidden}
+.cam .meter i{display:block;height:100%;width:0;background:var(--cc);transition:width .1s}
+
+.bottom{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr) minmax(0,1fr);gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:1.3px;color:var(--ink-soft);margin:0 0 12px;font-weight:600}
+#topView{width:100%;aspect-ratio:1;display:block}
+.darts{display:flex;flex-direction:column;gap:6px;max-height:330px;overflow:auto}
+.darts div{display:flex;justify-content:space-between;background:var(--panel-2);border-radius:8px;padding:7px 10px}
+.darts b{font-size:17px}
+.darts span{color:var(--ink-soft)}
+.darts .to{color:var(--warn)}
+.set{display:grid;grid-template-columns:150px 1fr 54px;gap:8px 12px;align-items:center;margin-bottom:6px}
+.set label{color:var(--ink-soft)}
+.set output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.help ol{margin:0;padding-left:20px;color:var(--ink-soft)}
+.help li{margin-bottom:6px}
+.help b{color:var(--ink)}
+.check{display:flex;gap:8px;align-items:center;color:var(--ink-soft);margin-top:10px}
+
+@media (max-width:1100px){
+  .cams{grid-template-columns:1fr}
+  .bottom{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Darts Score <span>· Caméras</span></h1>
+  <div class="field">Code de la cible <input type="text" id="code" maxlength="8" placeholder="ABCD" autocomplete="off"></div>
+  <div class="state"><span class="dot" id="netDot"></span><span id="netTxt">Pas encore connecté</span></div>
+  <button class="primary" id="startBtn">Démarrer les caméras</button>
+  <button id="detectBtn" disabled>Détection : arrêtée</button>
+</header>
+
+<main>
+  <div class="cams" id="cams"></div>
+
+  <div class="bottom">
+    <div class="panel">
+      <h2>Vue de la cible</h2>
+      <canvas id="topView" width="800" height="800"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Dernières détections</h2>
+      <div class="state" style="margin-bottom:10px"><span class="dot" id="detDot"></span><span id="detTxt">Détection arrêtée</span></div>
+      <div class="darts" id="dartList"></div>
+    </div>
+    <div class="panel">
+      <h2>Réglages</h2>
+      <div class="set"><label for="thr">Sensibilité (seuil)</label><input type="range" id="thr" min="8" max="90"><output id="thrV"></output></div>
+      <div class="set"><label for="minA">Taille mini fléchette</label><input type="range" id="minA" min="5" max="400"><output id="minAV"></output></div>
+      <div class="set"><label for="maxA">Taille maxi (sinon main)</label><input type="range" id="maxA" min="300" max="20000" step="100"><output id="maxAV"></output></div>
+      <label class="check"><input type="checkbox" id="showMask"> Afficher les zones qui ont changé (rouge)</label>
+      <div class="row" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button id="refBtn">Cible vide : nouvelle image de référence</button>
+        <button id="testBtn">Envoyer une fléchette test (T20)</button>
+      </div>
+      <div class="help" style="margin-top:16px">
+        <h2>Mode d'emploi</h2>
+        <ol>
+          <li>Sur l'iPad : <b>Réglages → Caméras</b>, activez et notez le <b>code</b>. Tapez le même code ici.</li>
+          <li><b>Démarrer les caméras</b>, puis choisissez une webcam par cadre.</li>
+          <li>Pour chaque caméra : <b>Calibrer</b> et cliquez les 4 repères dans l'ordre (bord extérieur du double, sur les fils indiqués). Déplacez-les à la souris jusqu'à ce que le dessin colle à la cible.</li>
+          <li>Vérifiez : un clic sur l'image affiche la case visée.</li>
+          <li>Retirez toutes les fléchettes et lancez la <b>Détection</b>.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="vision.js"></script>
+<script>
+"use strict";
+const V = window.DartVision;
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const COLORS = ["#3b8cff","#e5484d","#2fbf71"];
+const PROC_W = 400;              // processing width in pixels (keeps 3 cameras fast)
+const MOTION_MIN = 40;           // changed pixels between two frames that count as movement
+const STABLE_FRAMES = 3;         // still frames needed after a movement (~0.3 s)
+const LONG_ACTIVITY = 14;        // movement longer than this (~1.4 s) = a hand pulling the darts
+
+const cfg = Object.assign({ code:"", thr:30, minA:30, maxA:4000, showMask:false, cams:[{},{},{}] }, store.get("darts-cam-config") || {});
+const saveCfg = () => { cfg.cams = cams.map(c => ({ deviceId:c.deviceId, dir:c.dir, pts:c.pts })); store.set("darts-cam-config", cfg); };
+
+/* ================= Cameras ================= */
+const cams = [0,1,2].map(i => ({
+  i, color: COLORS[i], deviceId: (cfg.cams[i]||{}).deviceId || "", dir: (cfg.cams[i]||{}).dir || "down",
+  pts: (cfg.cams[i]||{}).pts || [], H:null, Hinv:null, calibrating:false, drag:-1,
+  stream:null, video:null, canvas:null, ctx:null, proc:null, pctx:null, pw:0, ph:0,
+  cur:null, prev:null, ref:null, mask:null, motion:0, lastTip:null, test:null, maskCanvas:null, visible:true
+}));
+cams.forEach(c => updateH(c));
+
+function updateH(c){
+  if(c.pts.length === 4){
+    c.H = V.calibrate(c.pts);
+    c.Hinv = c.H && V.invH(c.H);
+    // is the whole board inside the picture?
+    c.visible = !!c.H && Array.from({length:36}, (_,k) => V.applyH(c.H, [170*Math.cos(k*Math.PI/18), 170*Math.sin(k*Math.PI/18)]))
+      .every(([u,v]) => u >= 0 && u <= 1 && v >= 0 && v <= 1);
+  } else { c.H = c.Hinv = null; }
+}
+
+function guideSvg(next){
+  const pts = V.calPoints();
+  return `<svg viewBox="-200 -200 400 400"><circle r="170" fill="#22303a" stroke="#56636f" stroke-width="6"/><circle r="105" fill="none" stroke="#56636f" stroke-width="5"/>
+    <text y="-178" fill="#9aa3ad" font-size="44" text-anchor="middle">20</text>
+    ${pts.map((p,k) => `<circle cx="${p[0]}" cy="${p[1]}" r="${k===next?30:20}" fill="${k===next?'#3b8cff':k<next?'#2fbf71':'#5d6773'}"/><text x="${p[0]}" y="${p[1]+12}" fill="#fff" font-size="34" font-weight="700" text-anchor="middle">${k+1}</text>`).join("")}</svg>`;
+}
+
+function buildCamCards(devices){
+  const box = $("cams");
+  box.innerHTML = "";
+  cams.forEach(c => {
+    const el = document.createElement("div");
+    el.className = "cam"; el.style.setProperty("--cc", c.color);
+    el.innerHTML = `
+      <div class="top"><b>Caméra ${c.i+1}</b><select class="dev"><option value="">— aucune —</option>
+        ${devices.map(d => `<option value="${d.deviceId}">${(d.label || "Webcam").replace(/</g,"&lt;")}</option>`).join("")}</select></div>
+      <div class="view"><canvas width="640" height="360"></canvas><div class="empty">Choisissez une webcam</div></div>
+      <div class="meter"><i></i></div>
+      <div class="row">
+        <button class="cal">Calibrer</button>
+        <select class="dir" title="Où se trouve la pointe des fléchettes sur l'image">
+          <option value="down">Pointe vers le bas</option><option value="up">Pointe vers le haut</option>
+          <option value="left">Pointe vers la gauche</option><option value="right">Pointe vers la droite</option></select>
+      </div>
+      <div class="msg"></div>`;
+    box.appendChild(el);
+    c.el = el;
+    c.canvas = el.querySelector("canvas"); c.ctx = c.canvas.getContext("2d");
+    const sel = el.querySelector(".dev");
+    sel.value = devices.some(d => d.deviceId === c.deviceId) ? c.deviceId : "";
+    sel.onchange = () => { c.deviceId = sel.value; saveCfg(); openCam(c); };
+    const dir = el.querySelector(".dir"); dir.value = c.dir;
+    dir.onchange = () => { c.dir = dir.value; saveCfg(); };
+    el.querySelector(".cal").onclick = () => { c.pts = []; c.calibrating = true; c.test = null; updateH(c); saveCfg(); camMsg(c); };
+    setupPointer(c);
+    camMsg(c);
+    if(sel.value) openCam(c);
+  });
+}
+
+function camMsg(c){
+  if(!c.el) return;
+  const m = c.el.querySelector(".msg");
+  m.classList.remove("warn");
+  if(c.calibrating){
+    const k = c.pts.length;
+    m.innerHTML = guideSvg(k) + `<span>Cliquez le repère <b>${k+1}</b> : bord extérieur du double, sur le fil <b>${V.CAL_NAMES[k]}</b>.</span>`;
+  } else if(!c.H){
+    m.innerHTML = `<span>Pas encore calibrée. Cliquez « Calibrer ».</span>`;
+  } else if(!c.visible){
+    m.classList.add("warn");
+    m.innerHTML = `<span>⚠ La cible n'est pas entièrement visible : écartez ou tournez la caméra. Vous pouvez déplacer les repères à la souris.</span>`;
+  } else {
+    m.innerHTML = `<span>✓ Calibrée. Cliquez sur l'image pour vérifier une case, glissez les repères pour ajuster.</span>`;
+  }
+}
+
+async function openCam(c){
+  if(c.stream){ c.stream.getTracks().forEach(t => t.stop()); c.stream = null; }
+  c.video = null; c.ref = c.prev = c.cur = null;
+  c.el.querySelector(".empty").hidden = false;
+  if(!c.deviceId){ c.el.querySelector(".empty").textContent = "Choisissez une webcam"; return; }
+  c.el.querySelector(".empty").textContent = "Ouverture…";
+  try{
+    c.stream = await navigator.mediaDevices.getUserMedia({ video:{ deviceId:{exact:c.deviceId}, width:{ideal:1280}, height:{ideal:720} }, audio:false });
+    const v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.srcObject = c.stream;
+    await v.play();
+    c.video = v;
+    const vw = v.videoWidth || 1280, vh = v.videoHeight || 720;
+    c.canvas.width = 960; c.canvas.height = Math.round(960 * vh / vw);
+    c.el.querySelector(".view").style.aspectRatio = vw + "/" + vh;
+    c.pw = PROC_W; c.ph = Math.round(PROC_W * vh / vw);
+    c.proc = document.createElement("canvas"); c.proc.width = c.pw; c.proc.height = c.ph;
+    c.pctx = c.proc.getContext("2d", { willReadFrequently:true });
+    c.maskCanvas = document.createElement("canvas"); c.maskCanvas.width = c.pw; c.maskCanvas.height = c.ph;
+    c.mask = new Uint8Array(c.pw * c.ph);
+    c.el.querySelector(".empty").hidden = true;
+  }catch(e){
+    c.el.querySelector(".empty").textContent = "Impossible d'ouvrir cette webcam (" + e.name + "). Essayez un autre port USB.";
+  }
+}
+
+$("startBtn").onclick = async () => {
+  try{
+    const s = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });   // asks permission, so labels are readable
+    s.getTracks().forEach(t => t.stop());
+  }catch(e){
+    alert("L'accès aux caméras a été refusé. Autorisez-le dans le navigateur (icône à gauche de l'adresse) puis réessayez.");
+    return;
+  }
+  const devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
+  // first time: give each card a different webcam
+  cams.forEach((c,i) => { if(!c.deviceId && devices[i]) c.deviceId = devices[i].deviceId; });
+  saveCfg();
+  buildCamCards(devices);
+  $("startBtn").textContent = "Recharger les caméras";
+  $("detectBtn").disabled = false;
+};
+
+/* ---------- mouse on the camera pictures: calibration, dragging, test ---------- */
+function setupPointer(c){
+  const toNorm = e => { const r = c.canvas.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
+  c.canvas.addEventListener("pointerdown", e => {
+    if(!c.video) return;
+    const p = toNorm(e), r = c.canvas.getBoundingClientRect();
+    const near = c.pts.findIndex(q => Math.hypot((q[0]-p[0])*r.width, (q[1]-p[1])*r.height) < 14);
+    if(near >= 0){ c.drag = near; c.canvas.setPointerCapture(e.pointerId); return; }
+    if(c.calibrating){
+      c.pts.push(p);
+      if(c.pts.length === 4){ c.calibrating = false; updateH(c); }
+      saveCfg(); camMsg(c); return;
+    }
+    if(c.Hinv){
+      const b = V.applyH(c.Hinv, p);
+      c.test = { img:p, board:b, s:V.score(b) };
+      drawTop([{ p:b, color:c.color }], null);
+    }
+  });
+  c.canvas.addEventListener("pointermove", e => {
+    if(c.drag < 0) return;
+    c.pts[c.drag] = toNorm(e).map(v => Math.min(1, Math.max(0, v)));
+    updateH(c);
+  });
+  const up = () => { if(c.drag >= 0){ c.drag = -1; saveCfg(); camMsg(c); } };
+  c.canvas.addEventListener("pointerup", up);
+  c.canvas.addEventListener("pointercancel", up);
+}
+
+/* ---------- drawing ---------- */
+function drawCam(c){
+  if(!c.video) return;
+  const g = c.ctx, W = c.canvas.width, H = c.canvas.height;
+  g.drawImage(c.video, 0, 0, W, H);
+  if(cfg.showMask && c.maskCanvas) { g.globalAlpha = .65; g.drawImage(c.maskCanvas, 0, 0, W, H); g.globalAlpha = 1; }
+  const P = q => { const [u,v] = V.applyH(c.H, q); return [u*W, v*H]; };
+  if(c.H){
+    g.lineWidth = 1.5; g.strokeStyle = "rgba(255,230,80,.85)";
+    for(const r of [V.RING.obull, V.RING.tIn, V.RING.tOut, V.RING.dIn, V.RING.dOut]){
+      g.beginPath();
+      for(let k=0;k<=72;k++){ const a = k*Math.PI/36, [x,y] = P([r*Math.cos(a), r*Math.sin(a)]); k ? g.lineTo(x,y) : g.moveTo(x,y); }
+      g.stroke();
+    }
+    g.strokeStyle = "rgba(255,230,80,.5)";
+    for(let k=0;k<20;k++){
+      const a = (-81 + k*18) * Math.PI/180;
+      const [x1,y1] = P([V.RING.obull*Math.cos(a), V.RING.obull*Math.sin(a)]), [x2,y2] = P([V.RING.dOut*Math.cos(a), V.RING.dOut*Math.sin(a)]);
+      g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
+    }
+    const [tx,ty] = P([0,-185]);
+    g.font = "bold 22px system-ui"; g.fillStyle = "rgba(255,230,80,.95)"; g.textAlign = "center"; g.fillText("20", tx, ty);
+  }
+  c.pts.forEach((q,k) => {
+    const x = q[0]*W, y = q[1]*H;
+    g.fillStyle = c.color; g.strokeStyle = "#fff"; g.lineWidth = 2;
+    g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = "#fff"; g.font = "bold 13px system-ui"; g.textAlign = "center"; g.fillText(k+1, x, y+4.5);
+  });
+  if(c.lastTip){
+    const x = c.lastTip[0]*W, y = c.lastTip[1]*H;
+    g.strokeStyle = "#00e5ff"; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(x-14,y); g.lineTo(x+14,y); g.moveTo(x,y-14); g.lineTo(x,y+14); g.stroke();
+  }
+  if(c.test){
+    const x = c.test.img[0]*W, y = c.test.img[1]*H;
+    g.fillStyle = "#ff3df2"; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill();
+    g.font = "bold 24px system-ui"; g.textAlign = "left"; g.lineWidth = 4; g.strokeStyle = "#000";
+    const t = V.label(c.test.s); g.strokeText(t, x+10, y-10); g.fillStyle = "#fff"; g.fillText(t, x+10, y-10);
+  }
+}
+function loop(){ cams.forEach(drawCam); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+
+// top-down board with the lines seen by each camera
+const topCtx = $("topView").getContext("2d");
+let lastTop = { pts:[], lines:null };
+function drawTop(pts, lines){
+  if(pts) lastTop = { pts, lines };
+  const g = topCtx, S = 800, k = S / 420;
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,S,S);
+  g.setTransform(k,0,0,k,S/2,S/2);
+  g.fillStyle = "#111418"; g.beginPath(); g.arc(0,0,205,0,7); g.fill();
+  V.ORDER.forEach((n,i) => {
+    const a1 = (-99 + i*18) * Math.PI/180, a2 = a1 + 18*Math.PI/180;
+    const seg = (r1,r2,col) => { g.fillStyle = col; g.beginPath(); g.arc(0,0,r2,a1,a2); g.arc(0,0,r1,a2,a1,true); g.closePath(); g.fill(); };
+    const dark = i % 2 === 0;
+    seg(V.RING.obull, V.RING.tIn, dark ? "#1b1f24" : "#d9cfb4");
+    seg(V.RING.tIn, V.RING.tOut, dark ? "#c43c35" : "#2a8f52");
+    seg(V.RING.tOut, V.RING.dIn, dark ? "#1b1f24" : "#d9cfb4");
+    seg(V.RING.dIn, V.RING.dOut, dark ? "#c43c35" : "#2a8f52");
+    const am = (-90 + i*18) * Math.PI/180;
+    g.fillStyle = "#cfd5db"; g.font = "600 15px system-ui"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(n, 188*Math.cos(am), 188*Math.sin(am));
+  });
+  g.fillStyle = "#2a8f52"; g.beginPath(); g.arc(0,0,V.RING.obull,0,7); g.fill();
+  g.fillStyle = "#c43c35"; g.beginPath(); g.arc(0,0,V.RING.bull,0,7); g.fill();
+  if(lastTop.lines) for(const L of lastTop.lines){
+    g.strokeStyle = L.color; g.lineWidth = 1.6; g.setLineDash([6,4]);
+    g.beginPath(); g.moveTo(L.p[0]-L.d[0]*400, L.p[1]-L.d[1]*400); g.lineTo(L.p[0]+L.d[0]*400, L.p[1]+L.d[1]*400); g.stroke();
+    g.setLineDash([]);
+  }
+  for(const P of lastTop.pts){
+    g.fillStyle = P.color || "#fff"; g.strokeStyle = "#000"; g.lineWidth = 2;
+    g.beginPath(); g.arc(P.p[0], P.p[1], 5, 0, 7); g.fill(); g.stroke();
+  }
+}
+drawTop([], null);
+
+/* ================= Detection ================= */
+let detecting = false, activity = false, activityFrames = 0, stable = 0, idleTicks = 0;
+
+function setDet(txt, kind){ $("detTxt").textContent = txt; $("detDot").className = "dot " + (kind || ""); }
+$("detectBtn").onclick = () => {
+  detecting = !detecting;
+  $("detectBtn").textContent = detecting ? "Détection : active" : "Détection : arrêtée";
+  $("detectBtn").classList.toggle("on", detecting);
+  cams.forEach(c => { c.ref = c.cur && c.cur.slice(); });
+  activity = false; stable = 0;
+  setDet(detecting ? "En attente d'une fléchette" : "Détection arrêtée", detecting ? "ok" : "");
+};
+$("refBtn").onclick = () => { cams.forEach(c => { c.ref = c.cur && c.cur.slice(); c.lastTip = null; }); setDet("Nouvelle image de référence", "ok"); };
+
+function grab(c){
+  c.pctx.drawImage(c.video, 0, 0, c.pw, c.ph);
+  const data = c.pctx.getImageData(0, 0, c.pw, c.ph).data;
+  if(!c.cur || c.cur.length !== c.pw*c.ph){ c.cur = new Uint8Array(c.pw*c.ph); c.prev = null; }
+  const prev = c.prev || new Uint8Array(c.cur.length);
+  prev.set(c.cur);
+  V.toGray(data, c.cur);
+  c.motion = c.prev ? V.diffCount(c.cur, prev, cfg.thr, 2) : 0;
+  c.prev = prev;
+  if(!c.ref) c.ref = c.cur.slice();
+  const m = c.el && c.el.querySelector(".meter i");
+  if(m) m.style.width = Math.min(100, c.motion / 4) + "%";
+}
+
+function paintMask(c){
+  if(!c.maskCanvas) return;
+  const g = c.maskCanvas.getContext("2d"), img = g.createImageData(c.pw, c.ph);
+  for(let i=0;i<c.mask.length;i++) if(c.mask[i]){ img.data[i*4] = 255; img.data[i*4+3] = 255; }
+  g.putImageData(img, 0, 0);
+}
+
+function evaluate(){
+  const live = cams.filter(c => c.cur && c.ref && c.H);
+  const seen = live.map(c => {
+    V.diffMask(c.ref, c.cur, cfg.thr, c.mask);
+    paintMask(c);
+    return { c, blob: V.largestBlob(c.mask, c.pw, c.ph) };
+  });
+  const maxArea = Math.max(0, ...seen.map(s => s.blob.area));
+  const resetRefs = () => live.forEach(c => { c.ref = c.cur.slice(); });
+
+  if(maxArea > cfg.maxA || (activityFrames > LONG_ACTIVITY && maxArea >= cfg.minA)){
+    resetRefs();
+    live.forEach(c => c.lastTip = null);
+    setDet("Fléchettes retirées → joueur suivant", "warn");
+    addRow(`<b class="to">Retrait</b><span>joueur suivant</span>`);
+    send({ t:"takeout" });
+    drawTop([], null);
+    return;
+  }
+  if(maxArea < cfg.minA){ resetRefs(); setDet("En attente d'une fléchette", "ok"); return; }
+
+  const obs = [], lines = [];
+  for(const s of seen){
+    if(s.blob.area < cfg.minA) continue;
+    const c = s.c, t = V.tipOf(s.blob, c.pw, c.dir);
+    // tip touching the picture edge: this camera does not see the real tip
+    const edge = (c.dir === "down" && t[1] >= c.ph - 2) || (c.dir === "up" && t[1] <= 2) || (c.dir === "right" && t[0] >= c.pw - 2) || (c.dir === "left" && t[0] <= 2);
+    const tipN = [t[0] / c.pw, t[1] / c.ph];
+    c.lastTip = tipN;
+    if(edge) continue;
+    const o = V.observe(c.Hinv, tipN, c.dir);
+    if(o && Math.hypot(o.p[0], o.p[1]) < 400){ obs.push(o); lines.push({ ...o, color:c.color }); }
+  }
+  resetRefs();
+  const p = V.triangulate(obs);
+  if(!p){ setDet("Mouvement sans fléchette visible", "warn"); return; }
+  const s = V.score(p);
+  setDet(`Fléchette : ${V.label(s)} (${obs.length} caméra${obs.length>1?"s":""})`, "ok");
+  addRow(`<b>${V.label(s)}</b><span>${obs.length} cam · ${Math.round(Math.hypot(p[0],p[1]))} mm du centre</span>`);
+  drawTop([...lastTop.pts.slice(-2), { p, color:"#fff" }], lines);
+  send({ t:"dart", n:s.n, m:s.m, x:+p[0].toFixed(1), y:+p[1].toFixed(1) });
+}
+
+setInterval(() => {
+  const live = cams.filter(c => c.video && c.video.readyState >= 2 && c.pctx);
+  if(!live.length) return;
+  live.forEach(grab);
+  if(!detecting){ live.forEach(c => { c.ref = c.cur.slice(); }); return; }
+  const moving = live.some(c => c.motion > MOTION_MIN);
+  if(moving){
+    if(!activity){ activity = true; activityFrames = 0; setDet("Mouvement…", "warn"); }
+    activityFrames++; stable = 0;
+  } else if(activity){
+    if(++stable >= STABLE_FRAMES){ activity = false; evaluate(); }
+  } else if(++idleTicks >= 20){
+    // slow light changes: refresh the reference when nothing has really changed
+    idleTicks = 0;
+    const small = live.every(c => V.diffMask(c.ref, c.cur, cfg.thr, c.mask) < cfg.minA);
+    if(small) live.forEach(c => { c.ref = c.cur.slice(); });
+  }
+}, 100);
+
+function addRow(html){
+  const d = document.createElement("div");
+  d.innerHTML = html + `<span>${new Date().toLocaleTimeString("fr-FR")}</span>`;
+  $("dartList").prepend(d);
+  while($("dartList").children.length > 30) $("dartList").lastChild.remove();
+}
+
+/* ================= Sending to the iPad ================= */
+const chan = "BroadcastChannel" in window ? new BroadcastChannel("darts-cam") : null;
+function setNet(txt, kind){ $("netTxt").textContent = txt; $("netDot").className = "dot " + (kind || ""); }
+async function send(ev){
+  if(chan) chan.postMessage(ev);
+  const code = cfg.code;
+  if(!code) { if(ev.t !== "hb") setNet("Saisissez le code de l'iPad", "warn"); return; }
+  try{
+    const r = await fetch("api.php?code=" + encodeURIComponent(code), { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(ev) });
+    if(!r.ok) throw new Error(r.status);
+    setNet("Connecté au serveur · code " + code, "ok");
+  }catch(e){
+    setNet("Serveur injoignable (api.php)", "bad");
+  }
+}
+setInterval(() => { if(cams.some(c => c.video)) send({ t:"hb" }); }, 4000);
+$("testBtn").onclick = () => { addRow(`<b>T20</b><span>test</span>`); send({ t:"dart", n:20, m:3, x:0, y:-103 }); };
+
+/* ================= Settings ================= */
+$("code").value = cfg.code;
+$("code").addEventListener("input", e => { cfg.code = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); e.target.value = cfg.code; saveCfg(); });
+for(const k of ["thr","minA","maxA"]){
+  const el = $(k), out = $(k+"V");
+  el.value = cfg[k]; out.textContent = cfg[k];
+  el.addEventListener("input", () => { cfg[k] = +el.value; out.textContent = el.value; saveCfg(); });
+}
+$("showMask").checked = cfg.showMask;
+$("showMask").onchange = e => { cfg.showMask = e.target.checked; saveCfg(); };
+
+buildCamCards([]);
+if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+  $("startBtn").disabled = true;
+  setNet("Ouvrez cette page en https:// (ou sur localhost) pour accéder aux caméras", "bad");
+}
+</script>
+</body>
+</html>
