@@ -45,12 +45,15 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
 .hbtn svg{width:30px;height:30px}
 .camind{position:relative}
 .camind i{position:absolute;right:7px;bottom:8px;width:11px;height:11px;border-radius:50%;background:var(--ink-faint);border:2px solid var(--bg)}
+.hbtn.muted{opacity:.4}
 .camind.ok i{background:#2fbf71} .camind.warn i{background:#e2a52b} .camind.pause{opacity:.45}
 #board .mark{fill:#fff;stroke:#000;stroke-width:2.5;pointer-events:none}
 #board .mark.cam{fill:#00e5ff}
 .hint{color:var(--ink-soft);font-size:15px;margin-top:12px;line-height:1.45}
 .hint b{color:var(--ink)}
 .codebox{font-size:30px;font-weight:800;letter-spacing:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:8px 18px;font-variant-numeric:tabular-nums}
+#voiceSel{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--ink);font-size:17px}
+.voicebtn{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 18px;font-size:17px;font-weight:600}
 .camstat{display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:600}
 .camstat i{width:11px;height:11px;border-radius:50%;background:var(--ink-faint)}
 .camstat.ok i{background:#2fbf71} .camstat.warn i{background:#e2a52b}
@@ -225,12 +228,14 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
   <symbol id="i-reset" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 11-2.34-5.66"/><path d="M20 4v5h-5"/></g></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></g></symbol>
   <symbol id="i-cam" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3"/></g></symbol>
+  <symbol id="i-voice" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></g></symbol>
   <symbol id="i-next" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></g></symbol>
 </svg>
 
 <header>
   <div class="logo"><svg><use href="#i-dart"/></svg><span>Darts Score</span></div>
   <div class="mode" id="modeTxt"></div>
+  <button class="hbtn" id="voiceBtn" title="Voix (toucher pour couper)" hidden><svg><use href="#i-voice"/></svg></button>
   <button class="hbtn camind" id="camBtn" title="Caméras (toucher pour mettre en pause)" hidden><svg><use href="#i-cam"/></svg><i></i></button>
   <button class="hbtn" id="gearBtn" title="Réglages"><svg><use href="#i-gear"/></svg></button>
   <button class="hbtn" id="fullBtn" title="Plein écran"><svg><use href="#i-full"/></svg></button>
@@ -260,6 +265,15 @@ header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;flex:
       <h2>Joueurs</h2>
       <div class="players" id="players"></div>
       <button class="add" id="addPlayer">+ Ajouter un joueur</button>
+    </div>
+    <div class="card">
+      <h2>Voix (annonces)</h2>
+      <div class="seg" id="voiceSeg">
+        <button data-v="off">Désactivée</button>
+        <button data-v="turn">Score du tour</button>
+        <button data-v="dart">Chaque fléchette</button>
+      </div>
+      <div class="row" id="voiceRow"><select id="voiceSel"></select><button class="voicebtn" id="voiceTest">Écouter</button></div>
     </div>
     <div class="card">
       <h2>Comptage automatique (caméras)</h2>
@@ -317,7 +331,7 @@ const QUICK_TOTALS = [26, 41, 45, 60, 81, 100, 140];
 
 /* ================= Setup ================= */
 const newCodeStr = () => Array.from({length:4}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("");
-const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr() }, store.get("darts-setup") || {});
+const setup = Object.assign({ game:"501", out:"double", players:["Joueur 1","Joueur 2"], auto:false, code:newCodeStr(), voice:"turn", voiceName:"" }, store.get("darts-setup") || {});
 
 function renderSetup(){
   document.querySelectorAll("#gameSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.game));
@@ -325,6 +339,9 @@ function renderSetup(){
   $("outRow").hidden = setup.game === "cricket";
   document.querySelectorAll("#autoSeg button").forEach(b => b.classList.toggle("on", (b.dataset.v === "on") === setup.auto));
   $("autoBox").hidden = !setup.auto;
+  document.querySelectorAll("#voiceSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === setup.voice));
+  $("voiceRow").hidden = setup.voice === "off";
+  fillVoices();
   $("codeBox").textContent = setup.code;
   const box = $("players");
   box.innerHTML = "";
@@ -347,6 +364,9 @@ function renderSetup(){
 }
 $("gameSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.game = b.dataset.v; renderSetup(); } };
 $("outSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.out = b.dataset.v; renderSetup(); } };
+$("voiceSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.voice = b.dataset.v; voiceUnlock(); renderSetup(); voiceBtnState(); } };
+$("voiceSel").onchange = e => { setup.voiceName = e.target.value; store.set("darts-setup", setup); };
+$("voiceTest").onclick = () => { voiceUnlock(); sayNow("Cent quatre-vingts ! " + (setup.players[0] || "Joueur 1") + ", il vous reste 141."); };
 $("autoSeg").onclick = e => { const b = e.target.closest("button"); if(b){ setup.auto = b.dataset.v === "on"; renderSetup(); camRestart(); } };
 $("newCode").onclick = () => { setup.code = newCodeStr(); renderSetup(); camRestart(); };
 $("addPlayer").onclick = () => { setup.players.push("Joueur " + (setup.players.length+1)); renderSetup(); };
@@ -386,6 +406,7 @@ function newGame(type, out, names, legs, starter){
     winner: null
   };
   G.turnStart = G.players[G.cur].score;
+  sayNow((type === "cricket" ? "Cricket. " : "Partie de " + type + ". ") + "Le jeu commence. " + G.players[G.cur].name + ", à vous.");
   history = [];
   cancelPending();
   save();
@@ -394,6 +415,58 @@ function newGame(type, out, names, legs, starter){
 function save(){ if(G && G.winner === null) store.set("darts-game", G); else store.del("darts-game"); }
 function snap(){ history.push(JSON.stringify(G)); if(history.length > 300) history.shift(); }
 function log(e){ e.p = G.cur; G.log.push(e); if(G.log.length > 60) G.log.shift(); }
+
+/* ================= Voice (caller) ================= */
+// Uses the speech synthesis built into Safari/iPadOS: French voices, works offline, nothing to download.
+const synth = window.speechSynthesis || null;
+let voiceMuted = false, voiceUnlocked = false;
+function frVoices(){
+  if(!synth) return [];
+  return synth.getVoices().filter(v => /^fr/i.test(v.lang)).sort((a,b) => (b.localService - a.localService) || (/fr-FR/i.test(b.lang) - /fr-FR/i.test(a.lang)));
+}
+function pickVoice(){
+  const vs = frVoices();
+  return vs.find(v => v.name === setup.voiceName) || vs.find(v => /Thomas|Amélie|Amelie|Audrey|Google/i.test(v.name)) || vs[0] || null;
+}
+function fillVoices(){
+  const sel = $("voiceSel"); if(!sel) return;
+  const vs = frVoices(), cur = pickVoice();
+  sel.innerHTML = vs.length ? vs.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join("") : `<option value="">Voix française par défaut</option>`;
+  if(cur) sel.value = cur.name;
+  sel.disabled = !synth;
+}
+if(synth && "onvoiceschanged" in synth) synth.onvoiceschanged = fillVoices;
+// iPad: speech must first be started by a tap, after that the camera can trigger it too
+function voiceUnlock(){
+  if(!synth || voiceUnlocked) return;
+  voiceUnlocked = true;
+  const u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u);
+}
+document.addEventListener("pointerdown", voiceUnlock, { once:true, capture:true });
+const voiceOn = () => synth && setup.voice !== "off" && !voiceMuted;
+function speak(text, cut){
+  if(!voiceOn() || !text) return;
+  if(cut) synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "fr-FR"; u.rate = 1.05;
+  const v = pickVoice(); if(v) u.voice = v;
+  synth.speak(u);
+}
+const sayNow = t => speak(t, true);     // replaces whatever is being said
+const sayNext = t => speak(t, false);   // waits for the current sentence
+const dartWords = d => d.n === 0 ? "Raté" : d.n === 25 ? (d.m === 2 ? "Bull" : "25") : (d.m === 3 ? "Triple " : d.m === 2 ? "Double " : "") + d.n;
+function announceNext(){
+  const q = G.players[G.cur];
+  if(G.type === "cricket") return `À ${q.name}.`;
+  const co = q.score <= 170 && checkout(q.score, 3, G.out === "double");
+  return co ? `${q.name}, il vous reste ${q.score}.` : `À ${q.name}, ${q.score}.`;
+}
+function voiceBtnState(){
+  const b = $("voiceBtn");
+  b.hidden = !synth || setup.voice === "off";
+  b.classList.toggle("muted", voiceMuted);
+  b.title = voiceMuted ? "Voix coupée (toucher pour réactiver)" : "Voix (toucher pour couper)";
+}
 
 /* ================= Rules ================= */
 const val = d => d.n * d.m;
@@ -414,6 +487,7 @@ function throwDart(n, m, pos, fromCam){
     const pts = applyCricket(p, d);
     log({l: lbl(d), v: pts ? "+" + pts : (CK.includes(n) ? "✕".repeat(Math.min(m,3)) : "–"), x: n === 0});
     flash(lbl(d));
+    if(setup.voice === "dart") sayNow(dartWords(d));
     if(checkCricketWin()) return finishLeg();
   } else {
     const v = val(d);
@@ -429,11 +503,13 @@ function throwDart(n, m, pos, fromCam){
       log({l: "Bust", v: 0, x: true});
       render();
       flash("Bust !", "bad");
+      sayNow("Bust !");
       return later(() => endTurn(true), 1000);
     }
     p.score = left;
     p.points += v;
     flash(lbl(d));
+    if(setup.voice === "dart" && left !== 0) sayNow(dartWords(d));
     if(left === 0){ G.winner = G.cur; return finishLeg(); }
   }
   render();
@@ -472,6 +548,8 @@ function endTurn(skipSnap){
   if(!G || G.winner !== null) return;
   if(!skipSnap) snap();
   const p = G.players[G.cur];
+  const scored = G.turnStart - p.score, wasBust = G.bust;
+  const marks = G.turn.reduce((a,d) => a + (CK.includes(d.n) ? d.m : 0), 0);
   if(G.turn.length) p.last = turnSummary();
   if(G.type !== "cricket" && p.first9.length < 3) p.first9.push(G.turnStart - p.score);
   G.turn = [];
@@ -481,6 +559,8 @@ function endTurn(skipSnap){
   G.turnStart = G.players[G.cur].score;
   save();
   render();
+  if(G.type === "cricket") sayNext((marks ? marks + (marks > 1 ? " marques. " : " marque. ") : "") + announceNext());
+  else sayNext((wasBust ? "" : (scored === 180 ? "Cent quatre-vingts ! " : scored + ". ")) + announceNext());
 }
 
 function finishLeg(){
@@ -490,6 +570,7 @@ function finishLeg(){
   store.del("darts-game");
   render();
   flash(G.type === "cricket" ? "Gagné !" : "Check-out !", "good");
+  sayNow(G.type === "cricket" ? `${w.name} gagne la manche !` : `Check-out ! ${w.name} gagne la manche, en ${w.darts} fléchettes.`);
   setTimeout(showEnd, 1000);
 }
 
@@ -508,7 +589,7 @@ function submitTotal(v){
   if(left < 0 || (dbl && left === 1)){
     G.bust = true;
     log({l: "Bust", v: 0, x: true});
-    render(); flash("Bust !", "bad");
+    render(); flash("Bust !", "bad"); sayNow("Bust !");
     later(() => endTurn(true), 1000);
     return true;
   }
@@ -522,6 +603,7 @@ function submitTotal(v){
 
 function undo(){
   if(!history.length) return;
+  if(synth) synth.cancel();
   cancelPending();
   G = JSON.parse(history.pop());
   $("ov").hidden = true;
@@ -839,10 +921,12 @@ function camRestart(){
   if(setup.auto){ camPoll(); camTimer = setInterval(camPoll, 700); }
   camStatus();
 }
+$("voiceBtn").onclick = () => { voiceMuted = !voiceMuted; if(voiceMuted && synth) synth.cancel(); flash(voiceMuted ? "Voix coupée" : "Voix activée"); voiceBtnState(); };
 $("camBtn").onclick = () => { camPaused = !camPaused; flash(camPaused ? "Caméras en pause" : "Caméras actives"); camStatus(); };
 
 /* boot */
 camRestart();
+voiceBtnState();
 buildBoard();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(function(){}); }
 const saved = store.get("darts-game");
